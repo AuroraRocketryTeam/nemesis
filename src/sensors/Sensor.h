@@ -10,7 +10,8 @@ public:
     virtual ~Sensor() = default;
 
     virtual bool init() = 0;
-    virtual T* readData() = 0;
+    virtual bool readData() = 0;
+    virtual T getData() = 0;
 private:
     T data;
 };
