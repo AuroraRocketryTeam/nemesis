@@ -2,28 +2,28 @@
 
 float BME680SensorData::getTemperature() const
 {
-    return temperature;
+    return this->temperature;
 }
 
 uint32_t BME680SensorData::getPressure() const
 {
-    return pressure;
+    return this->pressure;
 }
 
 float BME680SensorData::getHumidity() const
 {
-    return humidity;
+    return this->humidity;
 }
 
 uint32_t BME680SensorData::getGasResistance() const
 {
-    return gas_resistance;
+    return this->gas_resistance;
 }
 
 String BME680SensorData::toString()
 {
-    return "Temperature: " + String(temperature) + "°C\n" +
-           "Pressure: " + String(pressure) + "hPa\n" +
-           "Humidity: " + String(humidity) + "%\n" +
-           "Gas Resistance: " + String(gas_resistance) + "Ohms\n";
+    return "Temperature: " + String(this->temperature) + "°C\n" +
+           "Pressure: " + String(this->pressure) + "Pa\n" +
+           "Humidity: " + String(this->humidity) + "%\n" +
+           "Gas Resistance: " + String(this->gas_resistance) + "Ohms\n";
 }
