@@ -15,10 +15,10 @@ void setup()
 void loop()
 {
     bme680.readData();
-    Serial.print(F("BME680: "));
+    Serial.println("BME680: ");
     Serial.print(bme680.getData().toString());
     bme680_2.readData();
-    Serial.print(F("BME680_2: "));
+    Serial.println("BME680_2: ");
     Serial.print(bme680_2.getData().toString());
     delay(2000);
 }
