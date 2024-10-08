@@ -1,0 +1,4 @@
+#ifndef BNO055_SENSOR_H
+#define BNO055_SENSOR_H
+
+#endif // BNO055_SENSOR_H
