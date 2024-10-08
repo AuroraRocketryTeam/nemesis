@@ -57,12 +57,9 @@ uint8_t BNO055SensorData::getMagCalibration() const
 
 String BNO055SensorData::toString()
 {
-    sensors_vec_t orient = this->getOrientation();
-    sensors_vec_t angVel = this->getAngularVelocity();
-    sensors_vec_t linAcc = this->getLinearAcceleration();
-    sensors_vec_t mag = this->getMagnetometer();
-    sensors_vec_t accel = this->getAccelerometer();
-    sensors_vec_t grav = this->getGravity();
+    sensors_vec_t orient = this->getOrientation(), angVel = this->getAngularVelocity(),
+                  linAcc = this->getLinearAcceleration(), mag = this->getMagnetometer(),
+                  accel = this->getAccelerometer(), grav = this->getGravity();
 
     String result = "Orientation: [" + String(orient.x) + ", " + String(orient.y) + ", " + String(orient.z) + "]\n";
     result += "Angular Velocity: [" + String(angVel.x) + ", " + String(angVel.y) + ", " + String(angVel.z) + "]\n";
@@ -70,7 +67,12 @@ String BNO055SensorData::toString()
     result += "Magnetometer: [" + String(mag.x) + ", " + String(mag.y) + ", " + String(mag.z) + "]\n";
     result += "Accelerometer: [" + String(accel.x) + ", " + String(accel.y) + ", " + String(accel.z) + "]\n";
     result += "Gravity: [" + String(grav.x) + ", " + String(grav.y) + ", " + String(grav.z) + "]\n";
-    result += "Board Temperature: " + String(board_temperature) + " °C\n";
-    result += "Calibration Levels: Sys=" + String(system_calibration) + " Gyro=" + String(gyro_calibration) + " Accel=" + String(accel_calibration) + " Mag=" + String(mag_calibration);
+    result += "Board Temperature: " + String(this->getBoardTemperature()) + " °C\n";
+    
+    result += String("Calibration Levels:") +
+              " Sys=" + String(this->getSystemCalibration()) +
+              " Gyro=" + String(this->getGyroCalibration()) +
+              " Accel=" + String(this->getAccelCalibration()) +
+              " Mag=" + String(this->getMagCalibration());
     return result;
 }
