@@ -20,21 +20,10 @@ uint32_t BME680SensorData::getGasResistance() const
     return gas_resistance;
 }
 
-void BME680SensorData::toString()
+String BME680SensorData::toString()
 {
-    Serial.print("Temperature = ");
-    Serial.print(temperature);
-    Serial.println(" °C");
-
-    Serial.print("Pressure = ");
-    Serial.print(pressure);
-    Serial.println(" Pa");
-
-    Serial.print("Humidity = ");
-    Serial.print(humidity);
-    Serial.println(" %");
-
-    Serial.print("Gas = ");
-    Serial.print(gas_resistance);
-    Serial.println(" Ohms");
+    return "Temperature: " + String(temperature) + "°C\n" +
+           "Pressure: " + String(pressure) + "hPa\n" +
+           "Humidity: " + String(humidity) + "%\n" +
+           "Gas Resistance: " + String(gas_resistance) + "Ohms\n";
 }

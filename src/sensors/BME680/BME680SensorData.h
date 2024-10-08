@@ -19,7 +19,7 @@ public:
     uint32_t getPressure() const;
     float getHumidity() const;
     uint32_t getGasResistance() const;
-    void toString() override;
+    String toString() override;
 
 private:
     float temperature;
