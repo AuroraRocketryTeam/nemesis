@@ -1,14 +1,18 @@
-#include <Arduino.h>
 #include <Wire.h>
-#include "const/pins.h"
-
-#include "sensors/Sensor.h"
 #include "sensors/BME680/BME680Sensor.h"
 
-void setup() {
-    // Serial port initialization.
+BME680Sensor bme680;
+
+void setup()
+{
     Serial.begin(115200);
+    while (!Serial){;}
+    Serial.println(F("BME680 test"));
+    bme680.init();
 }
 
-void loop() {
+void loop()
+{
+    Serial.print(bme680.getData().toString());
+    delay(2000);
 }
