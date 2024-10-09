@@ -10,7 +10,7 @@ void setup()
 {
     Serial.begin(115200);
     while (!Serial);
-    Serial.println(F("BME680 & BNO055 test"));
+    Serial.println("BME680 & BNO055 test");
     bme680.init(BME680_I2C_ADDR_1);
     bme680_2.init(BME680_I2C_ADDR_2);
     bno055.init();
