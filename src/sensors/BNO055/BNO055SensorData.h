@@ -37,37 +37,37 @@ public:
      *
      * @return sensors_vec_t orientation
      */
-    sensors_vec_t getOrientation() const;
+    sensors_vec_t getOrientation() const { return this->orientation; }
     /**
      * @brief Get the Angular Velocity on x,y,z axes in rad/s
      *
      * @return sensors_vec_t angularVelocity
      */
-    sensors_vec_t getAngularVelocity() const;
+    sensors_vec_t getAngularVelocity() const { return this->angularVelocity; }
     /**
      * @brief Get the Linear Acceleration on x,y,z axes in m/s^2
      *
      * @return sensors_vec_t linearAcceleration
      */
-    sensors_vec_t getLinearAcceleration() const; // Linear acceleration on x,y,z axes in m/s^2
+    sensors_vec_t getLinearAcceleration() const { return this->linearAcceleration; }
     /**
      * @brief Get the Magnetometer on x,y,z axes in uT
      *
      * @return sensors_vec_t magnetometer
      */
-    sensors_vec_t getMagnetometer() const; // Magnetometer on x,y,z axes in uT
+    sensors_vec_t getMagnetometer() const { return this->magnetometer; }
     /**
      * @brief Get the Accelerometer on x,y,z axes in m/s^2
      *
      * @return sensors_vec_t accelerometer
      */
-    sensors_vec_t getAccelerometer() const; // Accelerometer on x,y,z axes in m/s^2
+    sensors_vec_t getAccelerometer() const { return this->accelerometer; }
     /**
      * @brief Get the Gravity on x,y,z axes in m/s^2
      *
      * @return sensors_vec_t gravity
      */
-    sensors_vec_t getGravity() const; // Gravity on x,y,z axes in m/s^2
+    sensors_vec_t getGravity() const { return this->gravity; }
 
     /**
      * @brief Get the Board Temperature
@@ -75,32 +75,32 @@ public:
      * @note The working temperature of the sensor is between -40° and 85°C
      * @return int8_t
      */
-    int8_t getBoardTemperature() const;
+    int8_t getBoardTemperature() const { return this->board_temperature; }
 
     /**
      * @brief Get the System Calibration status
      * @note 0=uncalibrated, 1=partially calibrated, 2=mostly calibrated, 3=fully calibrated
      * @return uint8_t
      */
-    uint8_t getSystemCalibration() const;
+    uint8_t getSystemCalibration() const { return this->system_calibration; }
     /**
      * @brief Get the Gyroscope Calibration status
      * @note 0=uncalibrated, 1=partially calibrated, 2=mostly calibrated, 3=fully calibrated
      * @return uint8_t
      */
-    uint8_t getGyroCalibration() const;
+    uint8_t getGyroCalibration() const { return this->gyro_calibration; }
     /**
      * @brief Get the Accelerometer Calibration status
      * @note 0=uncalibrated, 1=partially calibrated, 2=mostly calibrated, 3=fully calibrated
      * @return uint8_t
      */
-    uint8_t getAccelCalibration() const;
+    uint8_t getAccelCalibration() const { return this->accel_calibration; }
     /**
      * @brief Get the Magnetometer Calibration status
      * @note 0=uncalibrated, 1=partially calibrated, 2=mostly calibrated, 3=fully calibrated
      * @return uint8_t
      */
-    uint8_t getMagCalibration() const;
+    uint8_t getMagCalibration() const { return this->mag_calibration; }
 
     String toString() override;
 

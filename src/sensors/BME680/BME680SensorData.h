@@ -9,16 +9,15 @@
 class BME680SensorData : public SensorData
 {
 public:
-    BME680SensorData() : temperature(-1), pressure(-1), humidity(-1), gas_resistance(-1) {}
-    BME680SensorData(float temp, uint32_t pres, float hum, uint32_t gas_res) : temperature(temp),
-                                                                               pressure(pres),
-                                                                               humidity(hum),
-                                                                               gas_resistance(gas_res) {}
+    BME680SensorData() : temperature(-39), pressure(-1), humidity(-1), gas_resistance(-1) {}
 
-    float getTemperature() const;
-    uint32_t getPressure() const;
-    float getHumidity() const;
-    uint32_t getGasResistance() const;
+    BME680SensorData(float temp, uint32_t pres, float hum, uint32_t gas_res) :
+                    temperature(temp), pressure(pres), humidity(hum), gas_resistance(gas_res) {}
+
+    float getTemperature() const { return this->temperature; };
+    uint32_t getPressure() const { return this->pressure; };
+    float getHumidity() const { return this->humidity; };
+    uint32_t getGasResistance() const { return this->gas_resistance; };
     String toString() override;
 
 private:
