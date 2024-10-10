@@ -17,7 +17,7 @@ public:
      */
     void log() override
     {
-        Serial.println(data.dump().c_str());
+        Serial.println(data.dump(4).c_str());
     };
 
     /**
