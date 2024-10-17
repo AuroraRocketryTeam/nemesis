@@ -1,6 +1,4 @@
-#include "sensors/BNO055/BNO055SensorData.h"
-#include "sensors/BME680/BME680SensorData.h"
-#include "BNO055Sensor.h"
+#include "BNO055Sensor.hpp"
 #include "const/config.h"
 
 static bool initialized = false;
@@ -35,34 +33,29 @@ bool BNO055Sensor::init()
     return initialized;
 }
 
-bool BNO055Sensor::readData()
+std::optional<SensorData> BNO055Sensor::getData()
 {
-    if (!initialized)
-    {
-        Serial.println("BNO055 Sensor not initialized");
-        return false;
-    }
     bno055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno055.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
     bno055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
     bno055.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
     bno055.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
     bno055.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
-    return true;
-}
 
-BNO055SensorData BNO055Sensor::getData()
-{
     bno055.getCalibration(&systemCal, &gyroCal, &accelCal, &magCal);
-    return BNO055SensorData(
-        orientationData.orientation,
-        angVelocityData.gyro,
-        linearAccelData.acceleration,
-        magnetometerData.magnetic,
-        accelerometerData.acceleration,
-        gravityData.acceleration,
-        bno055.getTemp(),
-        systemCal, gyroCal, accelCal, magCal);
+
+    SensorData data("BNO055");
+    /* TODO: Implementare la conversione da sensors_vec_t ad uno dei dati supportati (float, int o string)
+    data.setData("orientation", orientationData.orientation);
+    data.setData("angular_velocity", angVelocityData.gyro);
+    data.setData("linear_acceleration", linearAccelData.acceleration);
+    data.setData("magnetometer", magnetometerData.magnetic);
+    data.setData("accelerometer", accelerometerData.acceleration);
+    data.setData("gravity", gravityData.acceleration);
+    data.setData("temperature", bno055.getTemp());
+    */
+
+    return data;
 }
 
 bool BNO055Sensor::calibrate()

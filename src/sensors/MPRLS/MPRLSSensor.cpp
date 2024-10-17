@@ -1,4 +1,4 @@
-#include "MPRLSSensor.h"
+#include "MPRLSSensor.hpp"
 #include "const/config.h"
 
 static bool initialized = false;
@@ -25,23 +25,12 @@ bool MPRLSSensor::init()
     return initialized;
 }
 
-bool MPRLSSensor::readData()
+std::optional<SensorData> MPRLSSensor::getData()
 {
-    if (!initialized)
-    {
-        Serial.println("MPRLS Sensor not initialized");
-        return false;
-    }
     this->pressure = mprls.readPressure();
-    return this->pressure >= 0;
-}
 
-MPRLSSensorData MPRLSSensor::getData()
-{
-    if (!initialized)
-    {
-        Serial.println("MPRLS Sensor not initialized");
-        return MPRLSSensorData(-10000); // Return a dummy value, easy to spot a problem.
-    }
-    return MPRLSSensorData(this->pressure);
+    SensorData data("MPRLS");
+    data.setData("pressure", this->pressure);
+
+    return data;
 }
