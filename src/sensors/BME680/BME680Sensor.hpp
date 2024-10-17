@@ -1,5 +1,5 @@
-#ifndef BME680_SENSOR_H
-#define BME680_SENSOR_H
+#ifndef BME680_SENSOR_HPP
+#define BME680_SENSOR_HPP
 /**
  * @class BME680Sensor
  * @brief A sensor class for the BME680 sensor, inheriting from the Sensor class template.
@@ -17,21 +17,20 @@
  * @author alessandr.monticell4@studio.unibo.it
  * @author luca.pulga@studio.unibo.it
  */
-#include "sensors/Sensor.h"
+#include <Adafruit_BME680.h>
+#include "sensors/ISensor.hpp"
 #include "const/pins.h"
 #include "const/config.h"
-#include "BME680SensorData.h"
 
-class BME680Sensor : public Sensor<BME680SensorData>
+class BME680Sensor : public ISensor
 {
 public:
     BME680Sensor();
     bool init() override;
-    bool readData() override;
     bool init(uint8_t addr);
-    BME680SensorData getData() override;
+    std::optional<SensorData> getData() override;
 
 private:
     Adafruit_BME680 bme;
 };
-#endif // BME680_SENSOR_H
+#endif

@@ -1,8 +1,6 @@
-#include "BME680Sensor.h"
+#include "BME680Sensor.hpp"
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BME680.h>
-#include "sensors/BME680/BME680Sensor.h"
 
 bool initialized = false;
 
@@ -35,28 +33,19 @@ bool BME680Sensor::init()
     return this->init(0x77);
 }
 
-bool BME680Sensor::readData()
+std::optional<SensorData> BME680Sensor::getData()
 {
-    if (!initialized)
-    {
-        Serial.println("BME680 Sensor not initialized");
-        return false;
-    }
     if (!bme.performReading())
     {
         Serial.println("BME680 Failed to perform reading :(");
-        return false;
+        return std::nullopt;
     }
-    Serial.println("BME680 Reading performed successfully");
-    return true;
-}
 
-BME680SensorData BME680Sensor::getData()
-{
-    if (!initialized)
-    {
-        Serial.println("BME680 Sensor not initialized");
-        return BME680SensorData();
-    }
-    return BME680SensorData(bme.temperature, bme.pressure, bme.humidity, bme.gas_resistance);
+    SensorData data("BME680");
+    data.setData("temperature", bme.temperature);
+    data.setData("pressure", bme.pressure);
+    data.setData("humidity", bme.humidity);
+    data.setData("gas_resistance", bme.gas_resistance);
+
+    return data;
 }
