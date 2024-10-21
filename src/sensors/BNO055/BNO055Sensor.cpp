@@ -3,11 +3,12 @@
 
 static bool initialized = false;
 static sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
+static imu::Quaternion quaternionData;
 static uint8_t systemCal, gyroCal, accelCal, magCal = 0;
 
 static bool isCalibrated()
 {
-    return systemCal != 0 && gyroCal != 0 && accelCal != 0 && magCal != 0;
+    return systemCal > 0 && gyroCal > 0 && accelCal > 0 && magCal > 0;
 }
 
 BNO055Sensor::BNO055Sensor()
@@ -18,17 +19,20 @@ BNO055Sensor::BNO055Sensor()
 bool BNO055Sensor::init()
 {
     int attempts = 0;
+    uint start = millis();
     while (!bno055.begin() && attempts++ < SENSOR_LOOKUP_MAX_ATTEMPTS)
-    {
-        Serial.println("Could not find a valid BNO055 sensor, check wiring!");
-        delay(1000);
+    {   
+        uint end = millis();
+        while (end - start < SENSOR_LOOKUP_TIMEOUT)
+        {
+            end = millis();
+        }
     }
     if (attempts >= SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
         return initialized;
     }
     this->calibrate();
-    Serial.println("BNO055 Sensor initialized successfully");
     initialized = true;
     return initialized;
 }
@@ -41,11 +45,12 @@ std::optional<SensorData> BNO055Sensor::getData()
     bno055.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
     bno055.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
     bno055.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
-
     bno055.getCalibration(&systemCal, &gyroCal, &accelCal, &magCal);
+    quaternionData = bno055.getQuat();
 
     SensorData data("BNO055");
-    /* TODO: Implementare la conversione da sensors_vec_t ad uno dei dati supportati (float, int o string)
+    /** 
+     * TODO: Implementare la conversione da sensors_vec_t ad uno dei dati supportati (float, int o string)
     data.setData("orientation", orientationData.orientation);
     data.setData("angular_velocity", angVelocityData.gyro);
     data.setData("linear_acceleration", linearAccelData.acceleration);
@@ -54,6 +59,19 @@ std::optional<SensorData> BNO055Sensor::getData()
     data.setData("gravity", gravityData.acceleration);
     data.setData("temperature", bno055.getTemp());
     */
+    data.setData("system_calibration", systemCal);
+    data.setData("gyro_calibration", gyroCal);
+    data.setData("accel_calibration", accelCal);
+    data.setData("mag_calibration", magCal);
+
+    data.setData("orientation", std::vector<float>{orientationData.orientation.x, orientationData.orientation.y, orientationData.orientation.z});
+    data.setData("angular_velocity", std::vector<float>{angVelocityData.gyro.x, angVelocityData.gyro.y, angVelocityData.gyro.z});
+    data.setData("linear_acceleration", std::vector<float>{linearAccelData.acceleration.x, linearAccelData.acceleration.y, linearAccelData.acceleration.z});
+    data.setData("magnetometer", std::vector<float>{magnetometerData.magnetic.x, magnetometerData.magnetic.y, magnetometerData.magnetic.z});
+    data.setData("accelerometer", std::vector<float>{accelerometerData.acceleration.x, accelerometerData.acceleration.y, accelerometerData.acceleration.z});
+    data.setData("gravity", std::vector<float>{gravityData.acceleration.x, gravityData.acceleration.y, gravityData.acceleration.z});
+    data.setData("board_temperature", bno055.getTemp());
+    data.setData("quaternion", std::vector<double>{quaternionData.w(), quaternionData.x(), quaternionData.y(), quaternionData.z()});
 
     return data;
 }
@@ -62,15 +80,18 @@ bool BNO055Sensor::calibrate()
 {
     if (!initialized)
     {
-        Serial.println("BNO055 Sensor not initialized");
         return false;
     }
-    while (!isCalibrated())
+    uint start = millis();
+    int attempts = 0;
+    while (!isCalibrated() && attempts++ < SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
-        Serial.println("BNO055 Sensor not fully calibrated. Proceed to calibration...");
         bno055.getCalibration(&systemCal, &gyroCal, &accelCal, &magCal);
-        delay(1000);
+        uint end = millis();
+        while (end - start < SENSOR_LOOKUP_TIMEOUT)
+        {
+            end = millis();
+        }
     }
-    Serial.println("BNO055 Sensor fully calibrated");
     return true;
 }
