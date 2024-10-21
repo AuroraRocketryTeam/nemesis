@@ -18,7 +18,8 @@ protected:
     // Name of the sensor
     const std::string sensorName;
     // Map to store key-value pairs where values can be of different types
-    std::map<std::string, std::variant<int, unsigned int, double, std::string>> dataMap;
+    std::map<std::string, std::variant<int, unsigned int, double, std::string, std::vector<float>, std::vector<double>>> dataMap;
+    
 
 public:
     /**
@@ -34,7 +35,7 @@ public:
      * @param key The key to store the data.
      * @param value The value to store.
      */
-    void setData(const std::string& key, const std::variant<int, unsigned int, double, std::string>& value) {
+    void setData(const std::string& key, const std::variant<int, unsigned int, double, std::string, std::vector<float>, std::vector<double>>& value) {
         dataMap[key] = value;
     }
 
@@ -44,7 +45,7 @@ public:
      * @param key The key to retrieve the data.
      * @return The data if the key is found, otherwise std::nullopt.
      */
-    std::optional<std::variant<int, unsigned int, double, std::string>> getData(const std::string& key) const {
+    std::optional<std::variant<int, unsigned int, double, std::string, std::vector<float>, std::vector<double>>> getData(const std::string& key) const {
         auto it = dataMap.find(key);
         if (it != dataMap.end()) {
             return it->second;
@@ -59,7 +60,7 @@ public:
      * 
      * @return The data map.
      */
-    std::map<std::string, std::variant<int, unsigned int, double, std::string>> getDataMap() const {
+    std::map<std::string, std::variant<int, unsigned int, double, std::string, std::vector<float>, std::vector<double>>> getDataMap() const {
         return dataMap;
     }
 
