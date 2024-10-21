@@ -5,26 +5,64 @@
 #include "sensors/BNO055/BNO055Sensor.hpp"
 #include "utils/logger/rocket_logger/RocketLogger.hpp"
 
-ILogger* rocketLogger;
-ISensor* bme680;
-ISensor* bme680_2;
-ISensor* bno055;
+ILogger *rocketLogger;
+ISensor *bme680;
+ISensor *bme680_2;
+ISensor *bno055;
 
 void setup()
 {
     Serial.begin(115200);
     while (!Serial)
+    {
         ;
-
+    }
     rocketLogger = new RocketLogger();
-    bme680 = new BME680Sensor();
-    bme680_2 = new BME680Sensor();
+    bme680 = new BME680Sensor(BME680_I2C_ADDR_1);
+    bme680_2 = new BME680Sensor(BME680_I2C_ADDR_2);
     bno055 = new BNO055Sensor();
-    
-    Serial.println("BME680 & BNO055 test");
-    //bme680->init();
-    //bme680_2->init();
-    //bno055->init();    
+
+    // Define a struct to store sensor initialization information
+    struct SensorInitInfo
+    {
+        ISensor *sensor;
+        std::string name;
+        std::optional<int> address;
+    };
+
+    // Utility vector to initialize all sensors in a loop
+    std::vector<SensorInitInfo> sensors = {
+        {bme680, "BME680", BME680_I2C_ADDR_1},
+        {bme680_2, "BME680", BME680_I2C_ADDR_2},
+        {bno055, "BNO055", BNO055_I2C_ADDR}};
+
+    // Lambda function to log sensor initialization result based on initialization success
+    auto logInitializationResult = [&](const SensorInitInfo &sensorInfo, bool success)
+    {
+        if (success)
+        {
+            rocketLogger->logInfo(sensorInfo.name + " sensor initialized" +
+                                  (sensorInfo.address.has_value() ? " on address " + std::to_string(sensorInfo.address.value())
+                                                                  : ""));
+        }
+        else
+        {
+            rocketLogger->logError("Failed to initialize " + sensorInfo.name + " sensor" +
+                                   (sensorInfo.address.has_value() ? " on address " + std::to_string(sensorInfo.address.value()) : ""));
+        }
+    };
+
+    // Initialize all sensors
+    for (const auto &sensorInfo : sensors)
+    {
+        bool initSuccess = sensorInfo.sensor->init();
+
+        logInitializationResult(sensorInfo, initSuccess);
+    }
+
+    rocketLogger->logInfo("Setup complete.");
+    Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
+    rocketLogger->clearData();
 }
 
 void loop()
@@ -47,8 +85,7 @@ void loop()
         rocketLogger->logSensorData(bno055Value.value());
     }
 
-    Serial.write(rocketLogger->getJSONAll().dump().c_str());
+    Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
     rocketLogger->clearData();
     delay(1000);
 }
-
