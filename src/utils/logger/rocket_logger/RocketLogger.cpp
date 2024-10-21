@@ -20,7 +20,7 @@ void RocketLogger::logError(const std::string& message) {
 
 // Override logData to store sensor data
 void RocketLogger::logSensorData(const SensorData sensorData) {
-    ILoggable* logSensorData = new LogSensorData("RocketLogger", sensorData);    
+    ILoggable* logSensorData = new LogSensorData(sensorData.getSensorName(), sensorData);    
     this->logDataList.push_back(LogData("SENSOR_DATA", logSensorData));
 }
 
