@@ -1,10 +1,9 @@
 #include "BNO055Sensor.hpp"
 #include "const/config.h"
 
-static bool initialized = false;
-static sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
-static imu::Quaternion quaternionData;
-static uint8_t systemCal, gyroCal, accelCal, magCal = 0;
+sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
+imu::Quaternion quaternionData;
+uint8_t systemCal, gyroCal, accelCal, magCal = 0;
 
 static bool isCalibrated()
 {
@@ -30,15 +29,20 @@ bool BNO055Sensor::init()
     }
     if (attempts >= SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
-        return initialized;
+        return this->initialized;
     }
     this->calibrate();
-    initialized = true;
-    return initialized;
+    this->initialized = true;
+    return this->initialized;
 }
 
 std::optional<SensorData> BNO055Sensor::getData()
 {
+    if (!this->initialized)
+    {
+        return std::nullopt;
+    }
+    
     bno055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno055.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
     bno055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
@@ -64,21 +68,21 @@ std::optional<SensorData> BNO055Sensor::getData()
     data.setData("accel_calibration", accelCal);
     data.setData("mag_calibration", magCal);
 
-    data.setData("orientation", std::vector<float>{orientationData.orientation.x, orientationData.orientation.y, orientationData.orientation.z});
-    data.setData("angular_velocity", std::vector<float>{angVelocityData.gyro.x, angVelocityData.gyro.y, angVelocityData.gyro.z});
-    data.setData("linear_acceleration", std::vector<float>{linearAccelData.acceleration.x, linearAccelData.acceleration.y, linearAccelData.acceleration.z});
-    data.setData("magnetometer", std::vector<float>{magnetometerData.magnetic.x, magnetometerData.magnetic.y, magnetometerData.magnetic.z});
-    data.setData("accelerometer", std::vector<float>{accelerometerData.acceleration.x, accelerometerData.acceleration.y, accelerometerData.acceleration.z});
-    data.setData("gravity", std::vector<float>{gravityData.acceleration.x, gravityData.acceleration.y, gravityData.acceleration.z});
+    data.setData("orientation", std::map<std::string, float>{{"x", orientationData.orientation.x}, {"y", orientationData.orientation.y}, {"z", orientationData.orientation.z}});
+    data.setData("angular_velocity", std::map<std::string, float>{{"x", angVelocityData.gyro.x}, {"y", angVelocityData.gyro.y}, {"z", angVelocityData.gyro.z}});
+    data.setData("linear_acceleration", std::map<std::string, float>{{"x", linearAccelData.acceleration.x}, {"y", linearAccelData.acceleration.y}, {"z", linearAccelData.acceleration.z}});
+    data.setData("magnetometer", std::map<std::string, float>{{"x", magnetometerData.magnetic.x}, {"y", magnetometerData.magnetic.y}, {"z", magnetometerData.magnetic.z}});
+    data.setData("accelerometer", std::map<std::string, float>{{"x", accelerometerData.acceleration.x}, {"y", accelerometerData.acceleration.y}, {"z", accelerometerData.acceleration.z}});
+    data.setData("gravity", std::map<std::string, float>{{"x", gravityData.acceleration.x}, {"y", gravityData.acceleration.y}, {"z", gravityData.acceleration.z}});
     data.setData("board_temperature", bno055.getTemp());
-    data.setData("quaternion", std::vector<double>{quaternionData.w(), quaternionData.x(), quaternionData.y(), quaternionData.z()});
+    data.setData("quaternion", std::map<std::string, double>{{"w", quaternionData.w()}, {"x", quaternionData.x()}, {"y", quaternionData.y()}, {"z", quaternionData.z()}});
 
     return data;
 }
 
 bool BNO055Sensor::calibrate()
 {
-    if (!initialized)
+    if (!this->initialized)
     {
         return false;
     }
