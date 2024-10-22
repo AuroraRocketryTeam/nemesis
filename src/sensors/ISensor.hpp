@@ -25,6 +25,9 @@ public:
      * @return Just read data.
      */
     virtual std::optional<SensorData> getData() = 0;
+
+protected:
+    bool initialized = false;
 };
 
 #endif // ISENSOR_HPP
