@@ -29,16 +29,16 @@ bool BNO055Sensor::init()
     }
     if (attempts >= SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
-        return this->initialized;
+        return this->isInitialized();
     }
     this->calibrate();
-    this->initialized = true;
-    return this->initialized;
+    this->setInitialized(true);
+    return this->isInitialized();
 }
 
 std::optional<SensorData> BNO055Sensor::getData()
 {
-    if (!this->initialized)
+    if (!this->isInitialized())
     {
         return std::nullopt;
     }
@@ -110,7 +110,7 @@ std::optional<SensorData> BNO055Sensor::getData()
 
 bool BNO055Sensor::calibrate()
 {
-    if (!this->initialized)
+    if (!this->isInitialized())
     {
         return false;
     }

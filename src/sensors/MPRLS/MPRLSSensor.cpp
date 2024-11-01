@@ -20,10 +20,10 @@ bool MPRLSSensor::init()
     }
     if (attempts >= SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
-        return this->initialized;
+        return this->isInitialized();
     }
-    this->initialized = true;
-    return this->initialized;
+    this->setInitialized(true);
+    return this->isInitialized();
 }
 
 std::optional<SensorData> MPRLSSensor::getData()

@@ -22,7 +22,7 @@ bool BME680Sensor::init()
     }
     if (attempts >= SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
-        return this->initialized;
+        return this->isInitialized();
     }
     // Set up oversampling (NOTE: need to study the optimal values)
     bme.setGasHeater(0,0);                           // Turn off gas heater
@@ -30,13 +30,13 @@ bool BME680Sensor::init()
     bme.setHumidityOversampling(BME680_OS_1X);      // Set humidity oversampling to 1x
     bme.setPressureOversampling(BME680_OS_16X);     // Set pressure oversampling to 16x (max)
     
-    this->initialized = true;
-    return this->initialized;
+    this->setInitialized(true);
+    return this->isInitialized();
 }
 
 std::optional<SensorData> BME680Sensor::getData()
 {
-    if (!bme.performReading() || !this->initialized)
+    if (!bme.performReading() || !this->isInitialized())
     {
         return std::nullopt;
     }
