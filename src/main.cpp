@@ -1,27 +1,34 @@
 #include <Wire.h>
+#include <HardwareSerial.h>
 #include "sensors/ISensor.hpp"
 #include "utils/logger/ILogger.hpp"
 #include "sensors/BME680/BME680Sensor.hpp"
 #include "sensors/BNO055/BNO055Sensor.hpp"
 #include "sensors/MPRLS/MPRLSSensor.hpp"
 #include "utils/logger/rocket_logger/RocketLogger.hpp"
+#include "config/config.h"
+#include "telemetry/ITransmitter.hpp"
+#include "telemetry/LoRa/E220LoRaTransmitter.hpp"
 
 ILogger *rocketLogger;
 // ISensor *bme680;
 ISensor *bno055;
 ISensor *mprls;
+ITransmitter *loraTransmitter;
+HardwareSerial serial(1);
 
 void setup()
 {
+    serial.begin(9600, SERIAL_8N1, 2, 3);
     Serial.begin(115200);
-    while (!Serial)
-    {
-        ;
-    }
+
     rocketLogger = new RocketLogger();
     // bme680 = new BME680Sensor(BME680_I2C_ADDR_1);
     mprls = new MPRLSSensor();
     bno055 = new BNO055Sensor();
+    loraTransmitter = new E220LoRaTransmitter(rocketLogger, serial, 4, -1, -1);
+    loraTransmitter->init();
+    rocketLogger->logInfo("Setup started.");
 
     // Define a struct to store sensor initialization information
     struct SensorInitInfo
@@ -62,18 +69,10 @@ void setup()
 
     rocketLogger->logInfo("Setup complete.");
     Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
-    rocketLogger->clearData();
 }
 
 void loop()
 {
-    /*
-    auto bme680Value = bme680->getData();
-    if (bme680Value.has_value())
-    {
-        rocketLogger->logSensorData(bme680Value.value());
-    }
-    */
     auto mprlsValue = mprls->getData();
     if (mprlsValue.has_value())
     {
@@ -84,8 +83,8 @@ void loop()
     {
         rocketLogger->logSensorData(bno055Value.value());
     }
-
+    loraTransmitter->transmit(rocketLogger->getJSONAll());
     Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
     rocketLogger->clearData();
-    delay(1000);
+    delay(5000);
 }
