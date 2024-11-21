@@ -7,8 +7,8 @@
 #include "sensors/MPRLS/MPRLSSensor.hpp"
 #include "utils/logger/rocket_logger/RocketLogger.hpp"
 #include "config/config.h"
-#include "telemetry/ITransmitter.hpp"
 #include "telemetry/LoRa/E220LoRaTransmitter.hpp"
+#include "telemetry/ResponseCode.hpp"
 
 ILogger *rocketLogger;
 // ISensor *bme680;
@@ -26,8 +26,24 @@ void setup()
     // bme680 = new BME680Sensor(BME680_I2C_ADDR_1);
     mprls = new MPRLSSensor();
     bno055 = new BNO055Sensor();
-    loraTransmitter = new E220LoRaTransmitter(rocketLogger, serial, 4, -1, -1);
-    loraTransmitter->init();
+    loraTransmitter = new E220LoRaTransmitter(serial, 4, -1, -1);
+    auto transmitterStatus = loraTransmitter->init();
+    if (transmitterStatus.getCode() == RESPONSE_STATUS::E220_SUCCESS)
+    {
+        rocketLogger->logInfo(
+            ("LoRa transmitter initialized with configuration: " +
+             static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(
+             *(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)))
+            .c_str());
+    }
+    else
+    {
+        rocketLogger->logError(
+            ("Failed to initialize LoRa transmitter with error: " +
+             transmitterStatus.getDescription() +
+             " (" + String(transmitterStatus.getCode()) + ")")
+                .c_str());
+    }
     rocketLogger->logInfo("Setup started.");
 
     // Define a struct to store sensor initialization information
