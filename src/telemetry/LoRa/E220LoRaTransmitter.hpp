@@ -1,6 +1,6 @@
 #pragma once
 #include "telemetry/ITransmitter.hpp"
-#include "config/config.h"
+#include "global/config.h"
 #include <LoRa_E220.h>
 #include <HardwareSerial.h>
 
@@ -13,25 +13,75 @@ class E220LoRaTransmitter : public ITransmitter
 public:
     /**
      * @brief Construct a new E220LoRaTransmitter object
-     * 
+     *
      * @param serial The serial port for the LoRa module
      * @param auxPin AUX pin
      * @param m0Pin  M0 pin
      * @param m1Pin  M1 pin
      */
-    E220LoRaTransmitter(HardwareSerial &serial, byte auxPin, byte m0Pin, byte m1Pin) : 
-                        serial(serial), auxPin(auxPin), m0Pin(m0Pin), m1Pin(m1Pin), transmitter(&serial, auxPin, m0Pin, m1Pin) {};
+    E220LoRaTransmitter(HardwareSerial &serial, byte auxPin, byte m0Pin, byte m1Pin) : serial(serial), auxPin(auxPin), m0Pin(m0Pin), m1Pin(m1Pin), transmitter(&serial, auxPin, m0Pin, m1Pin) {};
 
-    E220LoRaTransmitter(HardwareSerial &serial) : 
-                        serial(serial), auxPin(-1), m0Pin(-1), m1Pin(-1), transmitter(&serial, -1, -1, -1) {};
+    /**
+     * @brief Construct a new E220LoRaTransmitter object
+     *
+     * @param serial The serial port for the LoRa module
+     * @param auxPin AUX pin
+     */
+    E220LoRaTransmitter(HardwareSerial &serial, byte auxPin) : serial(serial), auxPin(auxPin), m0Pin(-1), m1Pin(-1), transmitter(&serial, auxPin, -1, -1) {};
 
+    /**
+     * @brief Construct a new E220LoRaTransmitter object
+     *
+     * @param serial The serial port for the LoRa module
+     */
+    E220LoRaTransmitter(HardwareSerial &serial) : serial(serial), auxPin(-1), m0Pin(-1), m1Pin(-1), transmitter(&serial, -1, -1, -1) {};
+
+    /**
+     * @brief Initialize the LoRa module with default configuration.
+     * 
+     * @return ResponseStatusContainer 
+     */
     ResponseStatusContainer init() override;
+
+    /**
+     * @brief Init the LoRa module with a given configuration
+     * 
+     * @param config The configuration to use (see LoRa_E220.h)
+     * @return ResponseStatusContainer 
+     */
     ResponseStatusContainer init(Configuration config);
+    
+    /**
+     * @brief Transmit data over LoRa
+     * 
+     * @param data The data to transmit
+     * @return ResponseStatusContainer 
+     */
     ResponseStatusContainer transmit(std::variant<char *, String, std::string, nlohmann::json> data) override;
+
+    /**
+     * @brief Set a new configuration for the LoRa module
+     * 
+     * @param configuration The configuration to use
+     * @return ResponseStatusContainer 
+     */
     ResponseStatusContainer configure(Configuration configuration);
 
+    /**
+     * @brief Get the configuration object
+     * 
+     * @return ResponseStructContainer 
+     */
     ResponseStructContainer getConfiguration();
+
+    /**
+     * @brief Get the configuration string (an utility function)
+     * 
+     * @param configuration The configuration to convert to a string
+     * @return String 
+     */
     String getConfigurationString(Configuration configuration) const;
+
 private:
     HardwareSerial serial;
     byte auxPin;
