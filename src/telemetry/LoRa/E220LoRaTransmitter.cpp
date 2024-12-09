@@ -12,7 +12,7 @@ ResponseStatusContainer E220LoRaTransmitter::init()
     configuration.CHAN = 23;
 
     configuration.SPED.uartBaudRate = UART_BPS_9600;
-    configuration.SPED.airDataRate = AIR_DATA_RATE_010_24;
+    configuration.SPED.airDataRate = AIR_DATA_RATE_111_625;
     configuration.SPED.uartParity = MODE_00_8N1;
 
     configuration.OPTION.subPacketSetting = SPS_200_00;
@@ -38,27 +38,29 @@ ResponseStatusContainer E220LoRaTransmitter::transmit(std::variant<char *, Strin
 {
     // Extract the data from the variant
     String dataString;
-    dataString = std::holds_alternative<char *>(data) ? String(std::get<char *>(data)) :
-                 std::holds_alternative<String>(data) ? std::get<String>(data) :
-                 std::holds_alternative<std::string>(data) ? String(std::get<std::string>(data).c_str()) :
-                 std::holds_alternative<nlohmann::json>(data) ? String(std::get<nlohmann::json>(data).dump().c_str()) :
-                 "";
-    if(dataString.length() > 200)
+    if (std::holds_alternative<char *>(data))
+        dataString = String(std::get<char *>(data));
+    else if (std::holds_alternative<String>(data))
+        dataString = std::get<String>(data);
+    else if (std::holds_alternative<std::string>(data))
+        dataString = String(std::get<std::string>(data).c_str());
+    else if (std::holds_alternative<nlohmann::json>(data))
+        dataString = String(std::get<nlohmann::json>(data).dump().c_str());
+
+    // Split and send data in chunks of up to 200 bytes
+    const size_t MAX_CHUNK_SIZE = 199;
+    for (size_t start = 0; start < dataString.length(); start += MAX_CHUNK_SIZE)
     {
-        //split it in smaller strings and send them one by one
-        int start = 0;
-        while (start < dataString.length()) {
-            String chunk = dataString.substring(start, start + 199);
-            auto response = transmitter.sendFixedMessage(LORA_DESTINATION_ADDH, LORA_DESTINATION_ADDL, LORA_CHANNEL, chunk);
-            if (response.code != E220_SUCCESS) {
-                return ResponseStatusContainer(response.code, response.getResponseDescription());
-            }
-            start += 199;
+        String chunk = dataString.substring(start, start + MAX_CHUNK_SIZE);
+        auto sendResponse = transmitter.sendFixedMessage(LORA_DESTINATION_ADDH, LORA_DESTINATION_ADDL, LORA_CHANNEL, chunk);
+
+        // If any chunk fails to send, store the error and exit the loop
+        if (sendResponse.code != E220_SUCCESS)
+        {
+            return ResponseStatusContainer(sendResponse.code, sendResponse.getResponseDescription());
         }
     }
-    auto response = transmitter.sendFixedMessage(LORA_DESTINATION_ADDH, LORA_DESTINATION_ADDL, LORA_CHANNEL, dataString);
-
-    return ResponseStatusContainer(response.code, response.getResponseDescription());
+    return ResponseStatusContainer(E220_SUCCESS, "Data sent successfully.");
 }
 
 ResponseStatusContainer E220LoRaTransmitter::configure(Configuration configuration)
