@@ -98,3 +98,47 @@ String E220LoRaTransmitter::getConfigurationString(Configuration configuration) 
 
     return result;
 }
+
+template <typename T>
+T E220LoRaTransmitter::getBpsValue(const std::map<int, T>& baudRateMap, T defaultValue) const
+{
+    auto it = baudRateMap.find(SERIAL_BAUD_RATE);
+    if (it != baudRateMap.end())
+    {
+        return it->second;
+    }
+    else
+    {
+        return defaultValue;
+    }
+}
+
+UART_BPS_RATE E220LoRaTransmitter::getBpsRate() const
+{
+    static const std::map<int, UART_BPS_RATE> baudRateMap = {
+        {1200, UART_BPS_RATE_1200},
+        {2400, UART_BPS_RATE_2400},
+        {4800, UART_BPS_RATE_4800},
+        {9600, UART_BPS_RATE_9600},
+        {19200, UART_BPS_RATE_19200},
+        {38400, UART_BPS_RATE_38400},
+        {57600, UART_BPS_RATE_57600},
+        {115200, UART_BPS_RATE_115200}};
+
+    return getBpsValue(baudRateMap, UART_BPS_RATE_9600);
+}
+
+UART_BPS_TYPE E220LoRaTransmitter::getBpsType() const
+{
+    static const std::map<int, UART_BPS_TYPE> baudRateMap = {
+        {1200, UART_BPS_1200},
+        {2400, UART_BPS_2400},
+        {4800, UART_BPS_4800},
+        {9600, UART_BPS_9600},
+        {19200, UART_BPS_19200},
+        {38400, UART_BPS_38400},
+        {57600, UART_BPS_57600},
+        {115200, UART_BPS_115200}};
+
+    return getBpsValue(baudRateMap, UART_BPS_9600);
+}
