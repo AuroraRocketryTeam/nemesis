@@ -1,90 +1,140 @@
-#include "utils\logger\SD\SD-lib\src\SD.h"
-#include <string>
-#include "utils\logger\SD\SD-master.hpp"
+#include "SD-master.hpp"
 
-#include <Arduino>
-class _SD {
-    private:
-    
-     
-        bool success=false;
-        
-        
+/**
+ * @brief A SD.begin() wrapper
+ *
+ * @return true if the SD card is initialized, false otherwise
+ */
+bool SD::init()
+{
+    return this->SD.begin(SD_CS, SPI_HALF_SPEED); //! NOTE: might be SPI_FULL_SPEED (neeeds testing)
+}
 
-    public:
-        File reporter;
-        bool init(int CE_) {
-            success=SD.begin(CE_);
-            return success;            
-        }
-        bool write_file(std::string _name_file, std::string _string){
+/**
+ * @brief A SdFile.open wrapper
+ *
+ * @param filename
+ * @return true if the file is opened, false otherwise
+ */
+bool SD::openFile(std::string filename)
+{
+    if(!this->SD.exists(filename.c_str()) || this->file == nullptr)
+    {
+        this->file = new SdFile(filename.c_str(), O_RDWR | O_CREAT | O_AT_END);
+    } else {
+        this->file->open(filename.c_str(), O_RDWR | O_CREAT | O_AT_END);
+    }
+    return this->file->isOpen();
+}
 
-            reporter=SD.open("reporter.txt", 'w');
-            reporter.write("Trying writing on "+_name_file+"...");
+/**
+ * @brief A SDFile.close wrapper
+ *
+ * @return true if the file is closed, false otherwise.
+ */
+bool SD::closeFile()
+{
+    if(this->file == nullptr || !this->file->isOpen())
+    {
+        return false;
+    }
+    return this->file->close();
+}
 
-            if(SD.exists(_name_file)){
-                
-                File myfile=SD.open(_name_file, 'w');
-                if(myfile.isDirectory()){reporter.write("Error. File is a dir"); return 0;}
-                myfile.write(_string);
-                reporter.write("done\n");
-                myfile.close();
-                reporter.close();
+/**
+ * @brief Writes content to a file
+ *
+ * @param filename the file to write to
+ * @param content  the content to write
+ * @return true if the file is written, false otherwise
+ */
+bool SD::writeFile(std::string filename, std::variant<std::string, String, char *> content)
+{
+    if (!this->file->isOpen())
+    {
+        return false;
+    }
+    char *data;
+    if (std::holds_alternative<std::string>(content))
+    {
+        std::string str = std::get<std::string>(content);
+        data = new char[str.length() + 1];
+        strcpy(data, str.c_str());
+    }
+    else if (std::holds_alternative<String>(content))
+    {
+        String str = std::get<String>(content);
+        data = new char[str.length() + 1];
+        strcpy(data, str.c_str());
+    }
+    else
+    {
+        data = std::get<char *>(content);
+    }
+    this->file->println(data);
+    delete[] data;
+    return true;
+}
 
-            }else{
-                reporter.write("Error. File doesn't exist\n");
-                reporter.close()
-                return 0;
-            } 
-            return 1;
-        } //se true file trovato e scritto, se false file non trovato
-        bool read_file(std::string _name_file){
-            File file=SD.open(_name_file, 'r');
-            reporter=SD.open("reporter.txt", 'w');
-            reporter.write("Trying to print "+file.name()+"...");
-            
-            if(file){
-                if(file.isDirectory()){ reporter.write("Error: the file is a dir.\n"); return 0}
-                else Serial.write(file.read().to_str());
-            }else {reporter.write("Error opening file\n"); return 0;}
-            reporter.close();
+/**
+ * @brief Reads the content of a file from start to end.
+ *
+ * @return char* the content of the file.
+ */
+char *SD::readFile()
+{
+    if (!this->file->isOpen())
+    {
+        return nullptr;
+    }
+
+    // Allocate memory for the file content
+    size_t fileSize = this->file->fileSize();
+    char *content = (char *)malloc(fileSize + 1);
+    if (content == nullptr)
+    {
+        return nullptr;
+    }
+
+    size_t index = 0;
+    while (this->file->available())
+    {
+        content[index++] = (char)this->file->read();
+    }
+    content[index] = '\0';
+
+    return content;
+}
+
+/**
+ * @brief Deletes all files from the SD card.
+ *
+ * @return true if the SD card is cleared, false otherwise.
+ */
+bool SD::clearSD()
+{
+    if (!this->SD.exists("/"))
+    {
+        return false;
+    }
+
+    SdFile root;
+    if (!root.open("/", O_RDONLY))
+    {
+        return false;
+    }
+    SdFile file;
+    while (file.openNext(&root, O_RDONLY))
+    {
+        if (!file.remove())
+        {
             file.close();
-            return 1
-        } //stampa il contenuto del file. ritorna true se tutto ok senno no
-        bool remove(std::string dir_file){
+            root.close();
+            return false;
+        }
+        file.close();
+    }
+    root.close();
 
-            reporter=SD.open("reporter.txt", 'w');
-            File myfile=SD.open(dir_file);
-            reporter.write("Removing ");
-            reporter.write(myfile.name());
-            reporter.write("..."); 
-                       
-            if(myfile.exist()){
-                
-                if(myfile.isDirectory()) SD.rmdir(myfile.name());
-                else SD.remove(myfile.name());
-                reporter.write("done\n");
-
-            }else reporter.write("Error: file not found\n");
-            reporter.close();
-        } //se false, la directory o il file non sono stati eliminati correttamente
-        void clear_sd(){
-            
-            File myfile;
-            myfile=SD.open("/");
-            File temp;
-            reporter=SD.open("reporter.txt", 'w');
-            reporter.write("Clearing sd...");
-            whule(myfile){
-                temp=myfile.openNextFile();
-                if(myfile.isDrectory()) SD.rmdir(myfile.name()); 
-                else if(myfile.name()!=reporter.name()) SD.remove(myfile.name());
-                myfile=temp;
-            }
-            myfile.close();
-            temp.close();
-            reporter.write("done\n");
-            reporter.close();
-        } //pulisce tutta l'sd
-
+    return true;
 }
