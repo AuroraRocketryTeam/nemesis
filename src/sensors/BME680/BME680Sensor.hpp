@@ -1,5 +1,4 @@
-#ifndef BME680_SENSOR_HPP
-#define BME680_SENSOR_HPP
+#pragma once
 /**
  * @class BME680Sensor
  * @brief A sensor class for the BME680 sensor, inheriting from the Sensor class template.
@@ -19,8 +18,8 @@
  */
 #include <Adafruit_BME680.h>
 #include "sensors/ISensor.hpp"
-#include "const/pins.h"
-#include "const/config.h"
+#include "global/pins.h"
+#include "global/config.h"
 
 class BME680Sensor : public ISensor
 {
@@ -33,4 +32,3 @@ private:
     Adafruit_BME680 bme;
     uint8_t addr;
 };
-#endif

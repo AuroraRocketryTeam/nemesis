@@ -1,5 +1,4 @@
-#ifndef ILOGGABLE_HPP
-#define ILOGGABLE_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -29,4 +28,4 @@ public:
     virtual json toJSON() const = 0;
 };
 
-#endif // ILOGGABLE_HPP
+

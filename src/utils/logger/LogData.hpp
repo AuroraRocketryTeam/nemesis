@@ -1,5 +1,4 @@
-#ifndef LOG_DATA_H
-#define LOG_DATA_H
+#pragma once
 
 #include <string>
 #include <nlohmann/json.hpp>
@@ -44,4 +43,4 @@ public:
     json toJSON() const { return this->data->toJSON(); }
 };
 
-#endif
+

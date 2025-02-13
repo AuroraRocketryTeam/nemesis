@@ -1,5 +1,4 @@
-#ifndef LOG_SENSOR_DATA_H
-#define LOG_SENSOR_DATA_H
+#pragma once
 
 #include <string>
 #include <nlohmann/json.hpp>
@@ -67,4 +66,3 @@ public:
     }
 };
 
-#endif // LOG_SENSOR_DATA_H

@@ -1,5 +1,4 @@
-#ifndef LOG_MESSAGE_H
-#define LOG_MESSAGE_H
+#pragma once
 
 #include <string>
 #include <nlohmann/json.hpp>
@@ -51,4 +50,4 @@ public:
     }
 };
 
-#endif
+

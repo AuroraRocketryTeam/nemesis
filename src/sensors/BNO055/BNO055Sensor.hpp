@@ -1,5 +1,4 @@
-#ifndef BNO055_SENSOR_HPP
-#define BNO055_SENSOR_HPP
+#pragma once
 
 #include <Adafruit_BNO055.h>
 #include "sensors/ISensor.hpp"
@@ -15,4 +14,4 @@ public:
 private:
     Adafruit_BNO055 bno055;
 };
-#endif
+

@@ -1,5 +1,4 @@
-#ifndef MPRLS_SENSOR_HPP
-#define MPRLS_SENSOR_HPP
+#pragma once
 #include "sensors/ISensor.hpp"
 #include <Adafruit_MPRLS.h>
 
@@ -14,4 +13,3 @@ private:
     Adafruit_MPRLS mprls;
     float pressure;
 };
-#endif // MPRLS_SENSOR_HPP

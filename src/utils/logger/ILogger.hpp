@@ -1,6 +1,5 @@
 // LoggerInterface.h
-#ifndef ILOGGER_HPP
-#define ILOGGER_HPP
+#pragma once
 
 #include <string>
 #include <nlohmann/json.hpp>
@@ -62,4 +61,4 @@ public:
     };
 };
 
-#endif
+

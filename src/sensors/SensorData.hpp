@@ -1,5 +1,4 @@
-#ifndef SENSOR_DATA_HPP
-#define SENSOR_DATA_HPP
+#pragma once
 
 #include <string>
 #include <nlohmann/json.hpp>
@@ -79,4 +78,4 @@ public:
     }
 };
 
-#endif // SENSOR_DATA_HPP
+

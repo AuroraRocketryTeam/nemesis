@@ -1,5 +1,5 @@
 #include "BNO055Sensor.hpp"
-#include "const/config.h"
+#include "global/config.h"
 
 sensors_event_t orientationData, angVelocityData, linearAccelData, magnetometerData, accelerometerData, gravityData;
 imu::Quaternion quaternionData;
@@ -32,6 +32,8 @@ bool BNO055Sensor::init()
         return this->isInitialized();
     }
     this->calibrate();
+    /* Use external crystal for better accuracy */
+    bno055.setExtCrystalUse(true);
     this->setInitialized(true);
     return this->isInitialized();
 }
@@ -53,16 +55,7 @@ std::optional<SensorData> BNO055Sensor::getData()
     quaternionData = bno055.getQuat();
 
     SensorData data("BNO055");
-    /**
-     * TODO: Implementare la conversione da sensors_vec_t ad uno dei dati supportati (float, int o string)
-    data.setData("orientation", orientationData.orientation);
-    data.setData("angular_velocity", angVelocityData.gyro);
-    data.setData("linear_acceleration", linearAccelData.acceleration);
-    data.setData("magnetometer", magnetometerData.magnetic);
-    data.setData("accelerometer", accelerometerData.acceleration);
-    data.setData("gravity", gravityData.acceleration);
-    data.setData("temperature", bno055.getTemp());
-    */
+
     data.setData("system_calibration", systemCal);
     data.setData("gyro_calibration", gyroCal);
     data.setData("accel_calibration", accelCal);

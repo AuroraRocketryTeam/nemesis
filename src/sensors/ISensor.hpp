@@ -1,5 +1,4 @@
-#ifndef ISENSOR_HPP
-#define ISENSOR_HPP
+#pragma once
 
 #include "sensors/SensorData.hpp"
 #include <optional>
@@ -46,4 +45,3 @@ private:
     bool initialized = false;
 };
 
-#endif // ISENSOR_HPP
