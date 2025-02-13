@@ -5,9 +5,9 @@
  *
  * @return true if the SD card is initialized, false otherwise
  */
-bool SD::init()
+void SD::init()
 {
-    return this->SD.begin(SD_CS, SPI_HALF_SPEED); //! NOTE: might be SPI_FULL_SPEED (neeeds testing)
+    return this->SD.begin(SD_CS, SPI_HALF_SPEED);
 }
 
 /**
@@ -18,10 +18,12 @@ bool SD::init()
  */
 bool SD::openFile(std::string filename)
 {
-    if(!this->SD.exists(filename.c_str()) || this->file == nullptr)
+    if (!this->SD.exists(filename.c_str()) || this->file == nullptr)
     {
         this->file = new SdFile(filename.c_str(), O_RDWR | O_CREAT | O_AT_END);
-    } else {
+    }
+    else
+    {
         this->file->open(filename.c_str(), O_RDWR | O_CREAT | O_AT_END);
     }
     return this->file->isOpen();
@@ -34,7 +36,7 @@ bool SD::openFile(std::string filename)
  */
 bool SD::closeFile()
 {
-    if(this->file == nullptr || !this->file->isOpen())
+    if (this->file == nullptr || !this->file->isOpen())
     {
         return false;
     }
@@ -71,7 +73,7 @@ bool SD::writeFile(std::string filename, std::variant<std::string, String, char 
     {
         data = std::get<char *>(content);
     }
-    this->file->println(data);
+    this->file->write(data, strlen(data));
     delete[] data;
     return true;
 }
@@ -89,8 +91,10 @@ char *SD::readFile()
         return nullptr;
     }
 
-    // Allocate memory for the file content
+    this->file->seekSet(0); // Riporta il puntatore all'inizio
+
     size_t fileSize = this->file->fileSize();
+
     char *content = (char *)malloc(fileSize + 1);
     if (content == nullptr)
     {
@@ -98,9 +102,11 @@ char *SD::readFile()
     }
 
     size_t index = 0;
-    while (this->file->available())
+    int byte;
+    while ((byte = this->file->read()) != EOF)
     {
-        content[index++] = (char)this->file->read();
+        content[index] = byte;
+        index++;
     }
     content[index] = '\0';
 

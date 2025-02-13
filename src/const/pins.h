@@ -25,11 +25,11 @@
 
 
 // SD Card pins.
-#define SD_CLK 18 // D9 pin on nano esp32
-#define SD_SO 21 // D10 pin on nano esp32
-#define SD_CS 7 // D4 pin on nano esp32
-#define SD_D1 47 // D12 pin on nano esp32
-#define SD_DET 48 // D13 pin on nano esp32
+#define SD_CLK D13 // D9 pin on nano esp32
+#define SD_SO D12// D10 pin on nano esp32
+#define SD_SI D11 // D11 pin on nano esp32
+#define SD_CS D7 // D7 pin on nano esp32
+
 
 // Add here some other pin.
 
