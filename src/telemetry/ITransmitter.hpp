@@ -10,11 +10,11 @@
  * @brief Interface for a transmitter
  * 
  */
-
+template <typename T>
 class ITransmitter
 {
     public:
         virtual ResponseStatusContainer init() = 0;
-        virtual ResponseStatusContainer transmit(std::variant<char *, String, std::string, nlohmann::json> data) = 0;
+        virtual ResponseStatusContainer transmit(T data) = 0;
 };
 
