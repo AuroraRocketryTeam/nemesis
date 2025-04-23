@@ -7,9 +7,13 @@
 static const uint8_t LM35_PIN = 0;
 
 #include <tinyekf.h>
+#include <vector>
+#include <tuple>
 #include "./sensors/MPRLS/MPRLSSensor.hpp"
 #include "./sensors/BNO055/BNO055Sensor.hpp"
 
+// Elements needed to update the kalman filter
+unsigned long lastTime = 0;
 static const float EPSILON = 1e-4;
 
 static float Q[EKF_N*EKF_N];
@@ -21,10 +25,12 @@ static float H[EKF_M*EKF_N];
 static MPRLSSensor mprls;
 static BNO055Sensor bno;
 
-static ekf_t _ekf;
+ekf_t _ekf;
 
+// Vector to keep track of the position
+std::vector<std::tuple<float, float, float>> positionLog;
 
-void setup() 
+void setup()
 {
     // Initialize the Q matrix (process noise covariance)
     for (int i = 0; i < EKF_N; i++) {
@@ -70,6 +76,11 @@ void setup()
 
 void loop()
 {
+    // Evaluating time differences
+    unsigned long currentTime = millis();
+    float delta_t = (lastTime > 0) ? (currentTime - lastTime)  / 1000.0 : 0.0;
+    lastTime = currentTime;
+
     Serial.println("Test");
     // Retrieve data from MPRLS sensor
     auto mprlsDataOpt = mprls.getData();
@@ -129,11 +140,21 @@ void loop()
         bno_temperature
     };
     
-    // Process model: f(x) = x (state remains unchanged)
+    // Process model (state remains unchanged)
     float fx[EKF_N];
     for (int i = 0; i < EKF_N; i++) {
         fx[i] = _ekf.x[i];
     }
+
+    // Update model position and velocity with basic kinematic model
+    fx[0] += _ekf.x[3] * delta_t + 0.5f * _ekf.x[6] * delta_t * delta_t;
+    fx[1] += _ekf.x[4] * delta_t + 0.5f * _ekf.x[7] * delta_t * delta_t;
+    fx[2] += _ekf.x[5] * delta_t + 0.5f * _ekf.x[8] * delta_t * delta_t;
+
+    fx[3] += _ekf.x[6] * delta_t;
+    fx[4] += _ekf.x[7] * delta_t;
+    fx[5] += _ekf.x[8] * delta_t;
+
 
     // Run the prediction step of the EKF
     ekf_predict(&_ekf, fx, F, Q);
@@ -146,6 +167,8 @@ void loop()
 
     // Run the update step of the EKF
     ekf_update(&_ekf, z, hx, H, R);
+
+    positionLog.push_back({_ekf.x[0], _ekf.x[1], _ekf.x[2]});
     
     Serial.println("MPRLS Pressure:");
     Serial.println(z[0]);
