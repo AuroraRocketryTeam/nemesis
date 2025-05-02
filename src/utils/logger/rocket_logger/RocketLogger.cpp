@@ -36,5 +36,4 @@ json RocketLogger::getJSONAll() const {
 // Clear logged sensor data
 void RocketLogger::clearData() {
     this->logDataList.clear();
-    logInfo("All sensor data cleared.");
 }
