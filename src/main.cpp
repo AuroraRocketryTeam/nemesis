@@ -20,7 +20,7 @@ ILogger *rocketLogger;
 ISensor *bno055;
 ISensor *mprls1;
 ISensor *mprls2;
-ITransmitter *loraTransmitter;
+ITransmitter<TransmitDataType> *loraTransmitter;
 HardwareSerial loraSerial(LORA_SERIAL);
 
 void logTransmitterStatus(ResponseStatusContainer &transmitterStatus);
