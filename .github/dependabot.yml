@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "platformio"
+    directory: "/"  # directory contenente il file platformio.ini
+    schedule:
+      interval: "weekly"   # o daily, monthly, a seconda delle tue esigenze
+      day: "sunday"        # puoi cambiarlo
+      time: "08:00"        # in UTC
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "platformio"
+    open-pull-requests-limit: 5
