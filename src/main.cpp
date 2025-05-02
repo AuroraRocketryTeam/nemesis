@@ -21,14 +21,6 @@ ISensor *mprls2;
 ITransmitter *loraTransmitter;
 HardwareSerial loraSerial(LORA_SERIAL);
 
-// Struct to store sensor information for initialization and logging
-struct SensorInfo
-{
-    ISensor *sensor;            // Pointer to the sensor object
-    std::string name;           // Name of the sensor
-    std::optional<int> address; // I2C address of the sensor (if applicable)
-};
-
 void logTransmitterStatus(ResponseStatusContainer &transmitterStatus);
 void logTransmissionResponse(ResponseStatusContainer &response);
 void logInitializationResult(const std::string &sensorName, const std::optional<int> &address, bool success);
