@@ -4,7 +4,7 @@
 #include <cstddef>
 
 constexpr size_t MAX_PACKET_SIZE = 200;
-/* 3 bytes are reserved for ADDH, ADDL CHAN and RSSI in the library */
+/* 4 bytes are reserved for ADDH, ADDL, CHAN, and RSSI in the library */
 constexpr size_t RESERVED_BYTES = 4;
 
 
