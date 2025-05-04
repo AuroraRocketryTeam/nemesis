@@ -74,7 +74,9 @@ bool SD::writeFile(std::string filename, std::variant<std::string, String, char 
     }
     else
     {
-        data = std::get<char *>(content);
+        char *str = std::get<char *>(content);
+        data = new char[strlen(str) + 1];
+        strcpy(data, str);
     }
     this->file->write(data, strlen(data));
     delete[] data;
