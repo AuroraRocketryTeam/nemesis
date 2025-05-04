@@ -75,13 +75,12 @@ std::vector<uint8_t> convertToByteArray(const TransmitDataType &data)
     {
         sData += terminator;
     }
-    
     return std::vector<uint8_t>(sData.begin(), sData.end());
 }
 
 std::vector<uint8_t> compressData(std::vector<uint8_t> data)
 {
-    //TODO: use delta encoding to compress the data
+    // TODO: use delta encoding to compress the data
     return data;
 }
 
@@ -114,7 +113,7 @@ ResponseStatusContainer E220LoRaTransmitter::transmit(TransmitDataType data)
         // Suddivisione del pacchetto in chunk
         memcpy(packet.payload.data, compressedData.data() + offset, payloadSize);
 
-        if(payloadSize < MAX_PAYLOAD_SIZE)
+        if (payloadSize < MAX_PAYLOAD_SIZE)
         {
             // Se il chunk è più piccolo del massimo, riempi con 1 dopo il termine del payload
             memset(packet.payload.data + payloadSize, 0x01, MAX_PAYLOAD_SIZE - payloadSize);
@@ -122,14 +121,14 @@ ResponseStatusContainer E220LoRaTransmitter::transmit(TransmitDataType data)
 
         packet.calculateCRC();
         // Per debug: Stampa tutto il pacchetto in esadecimale
-        Serial.println("########## HEADER ##########");
+        Serial.println("######## HEADER ########");
         Serial.println("Packet Number: " + String(packet.header.packetNumber));
         Serial.println("Total Chunks: " + String(packet.header.totalChunks));
         Serial.println("Chunk Number: " + String(packet.header.chunkNumber));
         Serial.println("Chunk Size: " + String(packet.header.chunkSize));
         Serial.println("Payload Size: " + String(packet.header.payloadSize));
         Serial.println("Timestamp: " + String(packet.header.timestamp));
-        Serial.println("########## PAYLOAD ##########");
+        Serial.println("######## PAYLOAD ########");
         for (int i = 0; i < MAX_PAYLOAD_SIZE; i++)
         {
             Serial.print(String(packet.payload.data[i], HEX) + " ");
