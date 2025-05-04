@@ -115,5 +115,5 @@ private:
      */
     template <typename T>
     T getBpsValue(const std::map<int, T>& baudRateMap, T defaultValue) const;
-    uint8_t packetNumber = 0;
+    uint8_t packetNumber = 1;
 };
