@@ -19,7 +19,7 @@ protected:
     // Name of the sensor
     const std::string sensorName;
     // Map to store key-value pairs where values can be of different types
-    std::map<std::string, std::variant<int, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> dataMap;
+    std::map<std::string, std::variant<int, int8_t, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> dataMap;
 
 public:
     /**
@@ -35,7 +35,7 @@ public:
      * @param key The key to store the data.
      * @param value The value to store.
      */
-    void setData(const std::string &key, const std::variant<int, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>> &value)
+    void setData(const std::string &key, const std::variant<int, int8_t, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>> &value)
     {
         dataMap[key] = value;
     }
@@ -46,7 +46,7 @@ public:
      * @param key The key to retrieve the data.
      * @return The data if the key is found, otherwise std::nullopt.
      */
-    std::optional<std::variant<int, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> getData(const std::string &key) const
+    std::optional<std::variant<int, int8_t, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> getData(const std::string &key) const
     {
         auto it = dataMap.find(key);
         if (it != dataMap.end())
@@ -63,7 +63,7 @@ public:
      *
      * @return The data map.
      */
-    std::map<std::string, std::variant<int, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> getDataMap() const
+    std::map<std::string, std::variant<int, int8_t, unsigned int, double, float, std::string, std::vector<float>, std::vector<double>, std::map<std::string, double>, std::map<std::string, float>>> getDataMap() const
     {
         return dataMap;
     }

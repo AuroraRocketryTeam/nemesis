@@ -99,6 +99,7 @@ std::optional<SensorData> BNO055Sensor::getData()
                                 {"z", gravityData.acceleration.z}});
 
     data.setData("board_temperature", bno055.getTemp());
+    
     data.setData("quaternion", std::map<std::string, double>{
                                    {"w", quaternionData.w()},
                                    {"x", quaternionData.x()},
