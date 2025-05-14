@@ -92,6 +92,23 @@ void saveToCSV(const std::vector<float>& acc, const std::string& filename) {
     }
 }
 
+void quaternionToEulerAngles(const Eigen::Quaternionf& q, float& roll, float& pitch, float& yaw) {
+    // Extract quaternion components
+    float w = q.w();
+    float x = q.x();
+    float y = q.y();
+    float z = q.z();
+
+    // Calculate roll (ϕ)
+    roll = std::atan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y));
+
+    // Calculate pitch (θ)
+    pitch = std::asin(2.0f * (w * y - z * x));
+
+    // Calculate yaw (ψ)
+    yaw = std::atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z));
+}
+
 // These must be defined before including TinyEKF.h
 #define EKF_N 16 // Size of state space [3-positions, 3-velocities, 3-accelerations, 4-quaternion_rot] 
 #define EKF_M 6 // Size of observation (measurement) space [3-positions, 3-accelerations, 4-quaternion_rot]
@@ -419,6 +436,10 @@ int main() {
         ekf_predict(&ekf, fx, F, Q);
 
         ekf_update(&ekf, z, hx, H, R);
+
+        Eigen::Quaternionf q(ekf.x[6], ekf.x[7], ekf.x[8], ekf.x[9]);
+        float roll, pitch, yaw;
+        quaternionToEulerAngles(q, roll, pitch, yaw);
         
         lineNum++;  // Move to the next line
 
