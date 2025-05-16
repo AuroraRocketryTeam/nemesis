@@ -13,23 +13,36 @@
 #include "sensors/BNO055/BNO055Sensor.hpp"
 #include "sensors/MPRLS/MPRLSSensor.hpp"
 #include "telemetry/LoRa/E220LoRaTransmitter.hpp"
+#include "utils/logger/SD/SD-master.hpp"
 
 ILogger *rocketLogger;
+SD *sdModule;
+
 ISensor *bno055;
 ISensor *mprls1;
 ISensor *mprls2;
 ITransmitter *loraTransmitter;
 HardwareSerial loraSerial(LORA_SERIAL);
 
+std::string log_file = "log.json";
+
 void logTransmitterStatus(ResponseStatusContainer &transmitterStatus);
 void logTransmissionResponse(ResponseStatusContainer &response);
-void logInitializationResult(const std::string &sensorName, const std::optional<int> &address, bool success);
-bool initSensor(ISensor *sensor, const std::string &name, const std::optional<int> &address);
 void tcaSelect(uint8_t bus);
+void logToSDCard(const std::string &filename, const std::string &data);
+
 void setup()
 {
+    pinMode(LED_RED, OUTPUT);
+    pinMode(LED_GREEN, OUTPUT);
+    pinMode(LED_BLUE, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
     rocketLogger = new RocketLogger();
     rocketLogger->logInfo("Setup started.");
+
+    sdModule = new SD();
+
+    sdModule->init() ? rocketLogger->logInfo("SD card initialized.") : rocketLogger->logError("Failed to initialize SD card.");
 
     loraSerial.begin(SERIAL_BAUD_RATE, SERIAL_8N1, LORA_RX_PIN, LORA_TX_PIN);
     Serial.begin(SERIAL_BAUD_RATE);
@@ -38,6 +51,7 @@ void setup()
     tcaSelect(I2C_MULTIPLEXER_MPRLS1);
     mprls1 = new MPRLSSensor();
     mprls1->init();
+
     tcaSelect(I2C_MULTIPLEXER_MPRLS2);
     mprls2 = new MPRLSSensor();
     mprls2->init();
@@ -48,18 +62,17 @@ void setup()
     loraTransmitter = new E220LoRaTransmitter(loraSerial, LORA_AUX, LORA_M0, LORA_M1);
     auto transmitterStatus = loraTransmitter->init();
     logTransmitterStatus(transmitterStatus);
-
-    // initAllSensorsAndLogStatus();
-
+    rocketLogger->logInfo(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(*(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)).c_str());
     rocketLogger->logInfo("Setup complete.");
+    logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
     auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
     logTransmissionResponse(response);
-
-    Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
+    rocketLogger->clearData();
 }
 
 void loop()
 {
+
     {
         auto bno055_data = bno055->getData();
         if (bno055_data.has_value())
@@ -81,11 +94,8 @@ void loop()
             rocketLogger->logSensorData(mprls2_data.value());
         }
     }
-    rocketLogger->logInfo(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(*(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)).c_str());
+    logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
     auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
-    logTransmissionResponse(response);
-    Serial.write((rocketLogger->getJSONAll().dump(4) + "\n").c_str());
-    Serial.println("######################################");
 
     rocketLogger->clearData();
 }
@@ -121,33 +131,23 @@ void logTransmissionResponse(ResponseStatusContainer &response)
         : rocketLogger->logInfo("Data transmitted successfully.");
 }
 
-// Log a sensor initialization status
-void logInitializationResult(const std::string &sensorName, const std::optional<int> &address, bool success)
-{
-    std::string addressInfo = address.has_value() ? " on address " + std::to_string(address.value()) : "";
-
-    if (success)
-    {
-        rocketLogger->logInfo(sensorName + " sensor initialized" + addressInfo);
-    }
-    else
-    {
-        rocketLogger->logError("Failed to initialize " + sensorName + " sensor" + addressInfo);
-    }
-}
-
-// Initialize a sensor
-bool initSensor(ISensor *sensor, const std::string &name, const std::optional<int> &address)
-{
-    bool initSuccess = sensor->init();
-    logInitializationResult(name, address, initSuccess);
-    return initSuccess;
-}
-
 // Function to select the TCA9548A multiplexer bus
 void tcaSelect(uint8_t bus)
 {
     Wire.beginTransmission(0x70); // TCA9548A address
     Wire.write(1 << bus);         // send byte to select bus
     Wire.endTransmission();
+}
+
+void logToSDCard(const std::string &filename, const std::string &data)
+{
+    if (sdModule->openFile(filename))
+    {
+        sdModule->writeFile(filename, data);
+        sdModule->closeFile();
+    }
+    else
+    {
+        rocketLogger->logError("Failed to open file: " + filename);
+    }
 }
