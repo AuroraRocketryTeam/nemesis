@@ -1,3 +1,7 @@
+// Pragma needed to avoid our project "error" flags (not included in the guy's library)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 /*
  * Extended Kalman Filter for embedded processors
  *
@@ -326,3 +330,5 @@ static bool ekf_update(
     // success
     return true;
 }
+
+#pragma GCC diagnostic pop
