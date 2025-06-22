@@ -1,5 +1,11 @@
 #include "E220LoRaTransmitter.hpp"
+#include <pins.h>
 
+/**
+ * @brief Initialize the LoRa module with default configuration.
+ *
+ * @return ResponseStatusContainer
+ */
 ResponseStatusContainer E220LoRaTransmitter::init()
 {
     transmitter.begin();
@@ -11,7 +17,7 @@ ResponseStatusContainer E220LoRaTransmitter::init()
 
     configuration.CHAN = 23;
 
-    configuration.SPED.uartBaudRate = UART_BPS_9600;
+    configuration.SPED.uartBaudRate = getBpsType();
     configuration.SPED.airDataRate = AIR_DATA_RATE_111_625;
     configuration.SPED.uartParity = MODE_00_8N1;
 
@@ -34,39 +40,118 @@ ResponseStatusContainer E220LoRaTransmitter::init(Configuration config)
     return this->configure(config);
 }
 
-ResponseStatusContainer E220LoRaTransmitter::transmit(std::variant<char *, String, std::string, nlohmann::json> data)
+/**
+ * @brief Converts the data to a byte array.
+ *
+ * @param data
+ * @return std::vector<uint8_t>
+ */
+std::vector<uint8_t> convertToByteArray(const TransmitDataType &data)
 {
-    // Extract the data from the variant
-    String dataString;
+    std::string sData;
+    const char terminator = 0x17;
     if (std::holds_alternative<char *>(data))
     {
-        dataString = String(std::get<char *>(data));
+        sData = std::get<char *>(data);
     }
     else if (std::holds_alternative<String>(data))
     {
-        dataString = std::get<String>(data);
+        sData = std::get<String>(data).c_str();
     }
     else if (std::holds_alternative<std::string>(data))
     {
-        dataString = String(std::get<std::string>(data).c_str());
+        sData = std::get<std::string>(data);
     }
     else if (std::holds_alternative<nlohmann::json>(data))
     {
-        dataString = String(std::get<nlohmann::json>(data).dump().c_str());
+        sData = std::get<nlohmann::json>(data).dump();
     }
-    // Split and send data in chunks of up to 200 bytes
-    const size_t MAX_CHUNK_SIZE = 199;
-    for (size_t start = 0; start < dataString.length(); start += MAX_CHUNK_SIZE)
+    else
     {
-        String chunk = dataString.substring(start, start + MAX_CHUNK_SIZE);
-        auto sendResponse = transmitter.sendFixedMessage(LORA_DESTINATION_ADDH, LORA_DESTINATION_ADDL, LORA_CHANNEL, chunk);
-
-        // If any chunk fails to send, store the error and exit the loop
-        if (sendResponse.code != E220_SUCCESS)
-        {
-            return ResponseStatusContainer(sendResponse.code, sendResponse.getResponseDescription());
-        }
+        return {};
     }
+    // Aggiungi il terminatore null se non è già presente
+    if (sData.back() != terminator)
+    {
+        sData += terminator;
+    }
+    return std::vector<uint8_t>(sData.begin(), sData.end());
+}
+
+std::vector<uint8_t> compressData(std::vector<uint8_t> data)
+{
+    // TODO: use delta encoding to compress the data
+    return data;
+}
+
+ResponseStatusContainer E220LoRaTransmitter::transmit(TransmitDataType data)
+{
+    std::vector<uint8_t> byteArray = convertToByteArray(data);
+    if (byteArray.empty())
+    {
+        return ResponseStatusContainer(ERR_E220_UNKNOWN, "Couldn't convert data to byte array. Wrong data type or empty buffer.");
+    }
+
+    std::vector<uint8_t> compressedData = compressData(byteArray);
+    size_t dataLength = compressedData.size();
+    size_t offset = 0;
+
+    // Preparazione del pacchetto
+    Packet packet = {};
+    packet.header.packetNumber = this->packetNumber++;
+    // Calcolo del numero totale di chunk per rientrare nei 199 byte massimi.
+    packet.header.totalChunks = (dataLength + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE;
+    packet.header.chunkNumber = 1;
+
+    while (offset < dataLength)
+    {
+        packet.header.timestamp = static_cast<uint32_t>(time(nullptr));
+        uint8_t payloadSize = std::min(dataLength - offset, static_cast<size_t>(MAX_PAYLOAD_SIZE));
+        // Dimensione del payload
+        packet.header.payloadSize = payloadSize;
+        packet.header.chunkSize = payloadSize + HEADER_SIZE + CRC_SIZE;
+        // Suddivisione del pacchetto in chunk
+        memcpy(packet.payload.data, compressedData.data() + offset, payloadSize);
+
+        if (payloadSize < MAX_PAYLOAD_SIZE)
+        {
+            // Se il chunk è più piccolo del massimo, riempi con 1 dopo il termine del payload
+            memset(packet.payload.data + payloadSize, 0x01, MAX_PAYLOAD_SIZE - payloadSize);
+        }
+
+        packet.calculateCRC();
+        // Per debug: Stampa tutto il pacchetto in esadecimale
+        Serial.println("######## HEADER ########");
+        Serial.println("Packet Number: " + String(packet.header.packetNumber));
+        Serial.println("Total Chunks: " + String(packet.header.totalChunks));
+        Serial.println("Chunk Number: " + String(packet.header.chunkNumber));
+        Serial.println("Chunk Size: " + String(packet.header.chunkSize));
+        Serial.println("Payload Size: " + String(packet.header.payloadSize));
+        Serial.println("Timestamp: " + String(packet.header.timestamp));
+        Serial.println("Protocol Version: " + String(packet.header.protocolVersion));
+        Serial.println("######## PAYLOAD ########");
+        for (int i = 0; i < MAX_PAYLOAD_SIZE; i++)
+        {
+            Serial.print(String(packet.payload.data[i], HEX) + " ");
+        }
+        Serial.println();
+        Serial.println("CRC: " + String(packet.crc, HEX));
+
+        auto rc = this->transmitter.sendFixedMessage(LORA_RECEIVER_ADDH, LORA_RECEIVER_ADDL, LORA_CHANNEL,
+                                                     &packet, sizeof(Packet));
+        /* Delay per evitare collisioni (perdita di pacchetti),
+            empiricamente il minimo è 30ms a distanza ravvicinata. */
+        delay(30);
+
+        if (rc.code != E220_SUCCESS)
+        {
+            return ResponseStatusContainer(rc.code, rc.getResponseDescription());
+        }
+        packet.header.chunkNumber++;
+        // Sposta l'offset al prossimo chunk
+        offset += payloadSize;
+    }
+
     return ResponseStatusContainer(E220_SUCCESS, "Data sent successfully.");
 }
 

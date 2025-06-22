@@ -21,9 +21,9 @@ public:
 
         configuration.CHAN = 23;
 
-        configuration.SPED.uartBaudRate = UART_BPS_9600;
-        configuration.SPED.airDataRate = AIR_DATA_RATE_010_24;
-        configuration.SPED.uartParity = MODE_00_8N1;
+        configuration.SPEED.uartBaudRate = UART_BPS_9600;
+        configuration.SPEED.airDataRate = AIR_DATA_RATE_010_24;
+        configuration.SPEED.uartParity = MODE_00_8N1;
 
         configuration.OPTION.subPacketSetting = SPS_200_00;
         configuration.OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
@@ -69,9 +69,9 @@ public:
         configuration.ADDL = json["ADDL"];
         configuration.CHAN = json["CHAN"];
 
-        configuration.SPED.airDataRate = json["SPED"]["airDataRate"];
-        configuration.SPED.uartParity = json["SPED"]["uartParity"];
-        configuration.SPED.uartBaudRate = json["SPED"]["uartBaudRate"];
+        configuration.SPEED.airDataRate = json["SPEED"]["airDataRate"];
+        configuration.SPEED.uartParity = json["SPEED"]["uartParity"];
+        configuration.SPEED.uartBaudRate = json["SPEED"]["uartBaudRate"];
 
         configuration.OPTION.transmissionPower = json["OPTION"]["transmissionPower"];
         configuration.OPTION.reserved = json["OPTION"]["reserved"];

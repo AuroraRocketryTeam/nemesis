@@ -1,14 +1,20 @@
 #pragma once
 #include "telemetry/ITransmitter.hpp"
 #include <config.h>
+#include "telemetry/protocol/Packet.hpp"
+#include "zstd.h"
+#include <variant>
 #include <LoRa_E220.h>
 #include <HardwareSerial.h>
+#include <cstdint>
+
+using TransmitDataType = std::variant<char*, String, std::string, nlohmann::json>;
 
 /**
  * @brief Class for the Ebyte E220-900T22D LoRa module transmitter
  *
  */
-class E220LoRaTransmitter : public ITransmitter
+class E220LoRaTransmitter : public ITransmitter<TransmitDataType>
 {
 public:
     /**
@@ -57,7 +63,7 @@ public:
      * @param data The data to transmit
      * @return ResponseStatusContainer
      */
-    ResponseStatusContainer transmit(std::variant<char *, String, std::string, nlohmann::json> data) override;
+    ResponseStatusContainer transmit(TransmitDataType data) override;
 
     /**
      * @brief Set a new configuration for the LoRa module
@@ -109,4 +115,5 @@ private:
      */
     template <typename T>
     T getBpsValue(const std::map<int, T>& baudRateMap, T defaultValue) const;
+    uint8_t packetNumber = 1;
 };

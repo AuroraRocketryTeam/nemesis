@@ -15,13 +15,15 @@
 #include "telemetry/LoRa/E220LoRaTransmitter.hpp"
 #include "utils/logger/SD/SD-master.hpp"
 
+using TransmitDataType = std::variant<char*, String, std::string, nlohmann::json>;
+
 ILogger *rocketLogger;
 SD *sdModule;
 
 ISensor *bno055;
 ISensor *mprls1;
 ISensor *mprls2;
-ITransmitter *loraTransmitter;
+ITransmitter<TransmitDataType> *loraTransmitter;
 HardwareSerial loraSerial(LORA_SERIAL);
 
 std::string log_file = "log.json";
@@ -52,6 +54,7 @@ void setup()
     mprls1 = new MPRLSSensor();
     mprls1->init();
 
+
     tcaSelect(I2C_MULTIPLEXER_MPRLS2);
     mprls2 = new MPRLSSensor();
     mprls2->init();
@@ -62,12 +65,10 @@ void setup()
     loraTransmitter = new E220LoRaTransmitter(loraSerial, LORA_AUX, LORA_M0, LORA_M1);
     auto transmitterStatus = loraTransmitter->init();
     logTransmitterStatus(transmitterStatus);
-    rocketLogger->logInfo(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(*(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)).c_str());
     rocketLogger->logInfo("Setup complete.");
     logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
     auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
     logTransmissionResponse(response);
-    rocketLogger->clearData();
 }
 
 void loop()
@@ -96,7 +97,7 @@ void loop()
     }
     logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
     auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
-
+    logTransmissionResponse(response);
     rocketLogger->clearData();
 }
 

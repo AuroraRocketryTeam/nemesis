@@ -14,15 +14,15 @@
 #define FREQUENCY_868  // 868 MHz
 
 #define LORA_SERIAL 1 // Serial port for LoRa (1 = Serial1, 2 = Serial2)
-#define LORA_RX_PIN 2 // The pin connected to the TX pin of the LoRa module
-#define LORA_TX_PIN 3 // The pin connected to the RX pin of the LoRa module
+#define LORA_RX_PIN D2 // The pin connected to the TX pin of the LoRa module
+#define LORA_TX_PIN D3 // The pin connected to the RX pin of the LoRa module
 
 /* Transmitter antenna address */
 #define LORA_ADDH 0x00
 #define LORA_ADDL 0x03
 /* Receiver antenna address */
-#define LORA_DESTINATION_ADDH 0x00
-#define LORA_DESTINATION_ADDL 0x05
+#define LORA_RECEIVER_ADDH 0x00
+#define LORA_RECEIVER_ADDL 0x05
 
 #define LORA_CHANNEL 23 // Communication channel
 

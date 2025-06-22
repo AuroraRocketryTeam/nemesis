@@ -1,27 +1,53 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
+
+constexpr size_t MAX_PACKET_SIZE = 200;
+/* 4 bytes are reserved for ADDH, ADDL, CHAN, and RSSI in the library */
+constexpr size_t RESERVED_BYTES = 4;
+
+
+/* 2 bytes for CRC */
+constexpr size_t CRC_SIZE = sizeof(uint16_t);
+/* HEADER size + PAYLOAD size + crc size */
+constexpr size_t MAX_TX_PACKET_SIZE = MAX_PACKET_SIZE - RESERVED_BYTES;
+
+
+#pragma pack(push, 1) // Evita padding nelle strutture
+
 /**
  * @brief The packet header.
  *
+ * @param packetNumber The number of the packet.
+ * @param totalChunks The total number of chunks.
+ * @param chunkNumber The number of the chunk (message-id).
+ * @param chunkSize The size of the chunk.
+ * @param payloadSize The size of the payload.
+ * @param timestamp The timestamp of the packet.
+ * @param crc The CRC of the packet.
  */
 struct PacketHeader
 {
-    uint8_t packetNumber;
-    uint8_t packetSize;
+    uint16_t packetNumber = 1;
+    uint8_t totalChunks;
     uint8_t chunkNumber;
-    uint8_t chunkSize;
-    uint16_t length;
-    uint32_t timestamp;
+    uint8_t chunkSize;   // In bytes
+    uint8_t payloadSize; // In bytes
+    uint32_t timestamp;  // Unix timestamp
+    const uint8_t protocolVersion = 1; // Versione del protocollo
 };
+
+constexpr size_t HEADER_SIZE = sizeof(PacketHeader);
+constexpr size_t MAX_PAYLOAD_SIZE = MAX_TX_PACKET_SIZE - HEADER_SIZE - CRC_SIZE;
 
 /**
  * @brief The payload of a packet.
- *
+ * @param data The data of the payload (a byte array).
  */
 struct PacketPayload
 {
-    uint8_t data[114]; // Max packet size (200  bytes) - header size (80 bytes) - crc size (16 bytes)
+    uint8_t data[MAX_PAYLOAD_SIZE];
 };
 
 /**
@@ -33,30 +59,11 @@ struct Packet
     PacketHeader header;
     PacketPayload payload;
     uint16_t crc;
+
+    /**
+     * @brief Calculate the CRC16 of the packet.
+     */
+    void calculateCRC();
 };
 
-/**
- * @brief Calculate the CRC16 of a data buffer.
- *
- * @param data the data buffer
- * @param length the length of the data buffer
- * @return uint16_t the CRC16 of the data buffer
- */
-uint16_t calculateCRC(const uint8_t *data, size_t length)
-{
-    uint16_t crc = 0xFFFF;
-    while (length--)
-    {
-        crc ^= *data++;
-        for (uint8_t i = 0; i < 8; i++)
-        {
-            if (crc & 0x0001)
-                crc = (crc >> 1) ^ 0xA001;
-            else
-                crc = crc >> 1;
-        }
-    }
-    return crc;
-}
-
-#pragma pack(pop)
+#pragma pack(pop) // Ripristina l'allineamento predefinito
