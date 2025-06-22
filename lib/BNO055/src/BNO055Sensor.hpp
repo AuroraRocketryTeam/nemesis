@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Adafruit_BNO055.h>
-#include "sensors/ISensor.hpp"
+#include <ISensor.hpp>
 
 class BNO055Sensor : public ISensor
 {

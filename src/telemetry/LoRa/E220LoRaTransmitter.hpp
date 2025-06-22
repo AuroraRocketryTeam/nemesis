@@ -1,6 +1,6 @@
 #pragma once
 #include "telemetry/ITransmitter.hpp"
-#include "global/config.h"
+#include <config.h>
 #include <LoRa_E220.h>
 #include <HardwareSerial.h>
 

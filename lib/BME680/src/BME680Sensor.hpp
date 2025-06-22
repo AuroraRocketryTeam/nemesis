@@ -17,9 +17,9 @@
  * @author luca.pulga@studio.unibo.it
  */
 #include <Adafruit_BME680.h>
-#include "sensors/ISensor.hpp"
-#include "global/pins.h"
-#include "global/config.h"
+#include <ISensor.hpp>
+#include <pins.h>
+#include <config.h>
 
 class BME680Sensor : public ISensor
 {

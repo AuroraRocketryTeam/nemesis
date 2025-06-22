@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sensors/SensorData.hpp"
+#include <SensorData.hpp>
 #include <optional>
 
 /**

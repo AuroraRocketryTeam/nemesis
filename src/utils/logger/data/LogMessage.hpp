@@ -2,7 +2,7 @@
 
 #include <string>
 #include <nlohmann/json.hpp>
-#include "sensors/SensorData.hpp"
+#include <SensorData.hpp>
 #include "utils/logger/data/ILoggable.hpp"
 
 using json = nlohmann::json;
