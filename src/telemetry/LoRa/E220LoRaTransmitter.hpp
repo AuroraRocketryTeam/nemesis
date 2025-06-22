@@ -1,6 +1,6 @@
 #pragma once
 #include "telemetry/ITransmitter.hpp"
-#include "global/config.h"
+#include <config.h>
 #include "telemetry/protocol/Packet.hpp"
 #include "zstd.h"
 #include <variant>

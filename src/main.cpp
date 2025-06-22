@@ -4,14 +4,14 @@
 #include <optional>
 #include <vector>
 #include <string>
-#include "global/config.h"
+#include <config.h>
 #include "utils/utilities/functions.h"
 #include "utils/logger/ILogger.hpp"
 #include "utils/logger/rocket_logger/RocketLogger.hpp"
-#include "sensors/ISensor.hpp"
-#include "sensors/BME680/BME680Sensor.hpp"
-#include "sensors/BNO055/BNO055Sensor.hpp"
-#include "sensors/MPRLS/MPRLSSensor.hpp"
+#include <ISensor.hpp>
+#include <BME680Sensor.hpp>
+#include <BNO055Sensor.hpp>
+#include <MPRLSSensor.hpp>
 #include "telemetry/LoRa/E220LoRaTransmitter.hpp"
 #include "utils/logger/SD/SD-master.hpp"
 

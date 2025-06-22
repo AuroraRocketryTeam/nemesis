@@ -1,7 +1,7 @@
 #include <variant>
 #include <Arduino.h>
 #include "SdFat.h"
-#include "global/pins.h"
+#include <pins.h>
 class SD
 {
 private:

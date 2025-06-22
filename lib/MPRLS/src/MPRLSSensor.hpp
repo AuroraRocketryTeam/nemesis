@@ -1,5 +1,5 @@
 #pragma once
-#include "sensors/ISensor.hpp"
+#include <ISensor.hpp>
 #include <Adafruit_MPRLS.h>
 
 class MPRLSSensor : public ISensor
