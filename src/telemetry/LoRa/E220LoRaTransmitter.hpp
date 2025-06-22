@@ -1,8 +1,8 @@
 #pragma once
 #include "telemetry/ITransmitter.hpp"
-#include <config.h>
 #include "telemetry/protocol/Packet.hpp"
-#include "zstd.h"
+#include <config.h>
+#include <zstd.h>
 #include <variant>
 #include <LoRa_E220.h>
 #include <HardwareSerial.h>
