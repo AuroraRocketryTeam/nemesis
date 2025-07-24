@@ -160,7 +160,7 @@ bool BNO055SensorInterface::set_gyro_power_mode(uint8_t mode) {
     return (bno055_set_gyro_power_mode(mode) == BNO055_SUCCESS);
 }
 
-struct bno055_accel_float_t BNO055SensorInterface::get_accel() {
+std::vector<float> BNO055SensorInterface::get_accel() {
     struct bno055_accel_t accel;
     
     // The function return a boolean value indicating success or failure
@@ -170,10 +170,13 @@ struct bno055_accel_float_t BNO055SensorInterface::get_accel() {
     struct bno055_accel_float_t accel_msq;
     /*bool res2 = */bno055_convert_float_accel_xyz_msq(&accel_msq);
     
-    return accel_msq;
+    // Convert the bno055_accel_float_t to an std::vector<float>
+    std::vector<float> accel_vector = {accel_msq.x, accel_msq.y, accel_msq.z};
+
+    return accel_vector;
 }
 
-struct bno055_mag_float_t BNO055SensorInterface::get_mag() {
+std::vector<float> BNO055SensorInterface::get_mag() {
     struct bno055_mag_t mag;
 
     // The function return a boolean value indicating success or failure
@@ -183,10 +186,13 @@ struct bno055_mag_float_t BNO055SensorInterface::get_mag() {
     struct bno055_mag_float_t mag_mt;
     /*bool res2 = */bno055_convert_float_mag_xyz_uT(&mag_mt);
 
-    return mag_mt;
+    // Convert the bno055_mag_float_t to an std::vector<float>
+    std::vector<float> mag_vector = {mag_mt.x, mag_mt.y, mag_mt.z};
+
+    return mag_vector;
 }
 
-struct bno055_gyro_float_t BNO055SensorInterface::get_gyro_dps() {
+std::vector<float> BNO055SensorInterface::get_gyro_dps() {
     struct bno055_gyro_t gyro;
 
     // The function return a boolean value indicating success or failure
@@ -196,10 +202,13 @@ struct bno055_gyro_float_t BNO055SensorInterface::get_gyro_dps() {
     struct bno055_gyro_float_t gyro_dps;
     /*bool res2 = */bno055_convert_float_gyro_xyz_dps(&gyro_dps);
 
-    return gyro_dps;
+    // Convert the bno055_gyro_float_t to an std::vector<float>
+    std::vector<float> gyro_dps_vector = {gyro_dps.x, gyro_dps.y, gyro_dps.z};
+
+    return gyro_dps_vector;
 }
 
-struct bno055_gyro_float_t  BNO055SensorInterface::get_gyro_rps() {
+std::vector<float> BNO055SensorInterface::get_gyro_rps() {
     struct bno055_gyro_t gyro;
 
     // The function return a boolean value indicating success or failure
@@ -209,10 +218,13 @@ struct bno055_gyro_float_t  BNO055SensorInterface::get_gyro_rps() {
     struct bno055_gyro_float_t gyro_rps;
     /*bool res2 = */bno055_convert_float_gyro_xyz_rps(&gyro_rps);
 
-    return gyro_rps;
+    // Convert the bno055_gyro_float_t to an std::vector<float>
+    std::vector<float> gyro_rps_vector = {gyro_rps.x, gyro_rps.y, gyro_rps.z};
+
+    return gyro_rps_vector;
 }
 
-struct bno055_euler_float_t BNO055SensorInterface::get_euler_deg() {
+std::vector<float> BNO055SensorInterface::get_euler_deg() {
     struct bno055_euler_t euler;
 
     // The function return a boolean value indicating success or failure
@@ -222,10 +234,13 @@ struct bno055_euler_float_t BNO055SensorInterface::get_euler_deg() {
     struct bno055_euler_float_t euler_deg;
     /*bool res2 = */bno055_convert_float_euler_hpr_deg(&euler_deg);
 
-    return euler_deg;
+    // Convert the bno055_euler_float_t to an std::vector<float>
+    std::vector<float> euler_deg_vector = {euler_deg.h, euler_deg.r, euler_deg.p};
+
+    return euler_deg_vector;
 }
 
-struct bno055_euler_float_t BNO055SensorInterface::get_euler_rad() {
+std::vector<float> BNO055SensorInterface::get_euler_rad() {
     struct bno055_euler_t euler;
     
     // The function return a boolean value indicating success or failure
@@ -235,18 +250,29 @@ struct bno055_euler_float_t BNO055SensorInterface::get_euler_rad() {
     struct bno055_euler_float_t euler_rad;
     /*bool res2 = */bno055_convert_float_euler_hpr_rad(&euler_rad);
 
-    return euler_rad;
+    // Convert the bno055_euler_float_t to an std::vector<float>
+    std::vector<float> euler_rad_vector = {euler_rad.h, euler_rad.r, euler_rad.p};
+
+    return euler_rad_vector;
 }
 
-struct bno055_quaternion_t BNO055SensorInterface::get_quaternion() {
+std::vector<float> BNO055SensorInterface::get_quaternion() {
     struct bno055_quaternion_t quaternion;
     
     /*bool res = */bno055_read_quaternion_wxyz(&quaternion);
 
-    return quaternion;
+    // Convert the bno055_quaternion_t to an std::vector<float>
+    std::vector<float> quaternion_vector = {
+        static_cast<float>(quaternion.w),
+        static_cast<float>(quaternion.x),
+        static_cast<float>(quaternion.y),
+        static_cast<float>(quaternion.z)
+    };
+
+    return quaternion_vector;
 }
 
-struct bno055_linear_accel_t BNO055SensorInterface::get_linear_accel() {
+std::vector<float> BNO055SensorInterface::get_linear_accel() {
     struct bno055_linear_accel_t linear_accel;
     
     /*bool res = */bno055_read_linear_accel_xyz(&linear_accel);
@@ -255,10 +281,13 @@ struct bno055_linear_accel_t BNO055SensorInterface::get_linear_accel() {
     struct bno055_linear_accel_float_t linear_accel_msq;
     /*bool res2 = */bno055_convert_float_linear_accel_xyz_msq(&linear_accel_msq);
 
-    return linear_accel;
+    // Convert the bno055_linear_accel_float_t to an std::vector<float>
+    std::vector<float> linear_accel_vector = {linear_accel_msq.x, linear_accel_msq.y, linear_accel_msq.z};
+
+    return linear_accel_vector;
 }
 
-struct bno055_gravity_t BNO055SensorInterface::get_gravity() {
+std::vector<float> BNO055SensorInterface::get_gravity() {
     struct bno055_gravity_t gravity;
     
     /*bool res = */bno055_read_gravity_xyz(&gravity);
@@ -267,7 +296,10 @@ struct bno055_gravity_t BNO055SensorInterface::get_gravity() {
     struct bno055_gravity_float_t gravity_msq;
     /*bool res2 = */bno055_convert_float_gravity_xyz_msq(&gravity_msq);
 
-    return gravity;
+    // Convert the bno055_gravity_float_t to an std::vector<float>
+    std::vector<float> gravity_vector = {gravity_msq.x, gravity_msq.y, gravity_msq.z};
+
+    return gravity_vector;
 }
 
 // !!! CHECK THE CONVERTION IN PRACTICE

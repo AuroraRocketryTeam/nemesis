@@ -210,55 +210,55 @@ public:
      * @brief Get the current accelerometer data
      * @return Accelerometer data structure containing x, y, z acceleration values
      */
-    struct bno055_accel_float_t get_accel();
+    std::vector<float> get_accel();
 
     /**
      * @brief Get the current magnetometer data
      * @return Magnetometer data structure containing x, y, z magnetic field values
      */
-    struct bno055_mag_float_t get_mag();
+    std::vector<float> get_mag();
 
     /**
      * @brief Get the current gyroscope data in degrees per second
      * @return Gyroscope data structure containing x, y, z angular velocity values in degrees per second
      */
-    struct bno055_gyro_float_t get_gyro_dps();
+    std::vector<float> get_gyro_dps();
 
     /**
      * @brief Get the current gyroscope data in radians per second
      * @return Gyroscope data structure containing x, y, z angular velocity values in radians per second
      */
-    struct bno055_gyro_float_t get_gyro_rps();
+    std::vector<float> get_gyro_rps();
 
     /**
      * @brief Get the current Euler angles in degrees
      * @return Euler angles structure containing heading, roll, pitch in degrees
      */
-    struct bno055_euler_float_t get_euler_deg();
+    std::vector<float> get_euler_deg();
 
     /**
      * @brief Get the current Euler angles in radians
      * @return Euler angles structure containing heading, roll, pitch in radians
      */
-    struct bno055_euler_float_t get_euler_rad();
+    std::vector<float> get_euler_rad();
 
     /**
      * @brief Get the current quaternion data
      * @return Quaternion data structure containing x, y, z, w values
      */
-    struct bno055_quaternion_t get_quaternion();
+    std::vector<float> get_quaternion();
 
     /**
      * @brief Get the current linear acceleration data
      * @return Linear acceleration data structure containing x, y, z acceleration values
      */
-    struct bno055_linear_accel_t get_linear_accel();
+    std::vector<float> get_linear_accel();
 
     /**
      * @brief Get the current gravity vector data
      * @return Gravity vector data structure containing x, y, z acceleration values
      */
-    struct bno055_gravity_t get_gravity();
+    std::vector<float> get_gravity();
 
     /**
      * @brief Get the current temperature data
