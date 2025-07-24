@@ -53,12 +53,18 @@ void setup()
         }
     }
 
+<<<<<<< HEAD
     // Initialize the H matrix (Jacobian of measurement model)
     for (int i = 0; i < EKF_M; i++) {
         for (int j = 0; j < EKF_N; j++) {
             H[i * EKF_N + j] = (i == j) ? 1 : 0;
         }
     }
+=======
+    loraSerial.begin(SERIAL_BAUD_RATE, SERIAL_8N1, LORA_RX, LORA_TX);
+    Serial.begin(SERIAL_BAUD_RATE);
+    Wire.begin();
+>>>>>>> origin/feature/GPS-sensor
 
     float Pdiag[EKF_N];
     for (int i = 0; i < EKF_N; i++) {

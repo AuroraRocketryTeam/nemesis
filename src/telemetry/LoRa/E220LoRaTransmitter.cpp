@@ -8,7 +8,7 @@
  */
 ResponseStatusContainer E220LoRaTransmitter::init()
 {
-    transmitter.begin();
+#ifdef TRANSMITTER_CONFIG_MODE_ENABLE
     auto configurationStatus = this->getConfiguration();
     auto configuration = *(Configuration *)configurationStatus.data;
 
@@ -17,13 +17,13 @@ ResponseStatusContainer E220LoRaTransmitter::init()
 
     configuration.CHAN = 23;
 
-    configuration.SPED.uartBaudRate = getBpsType();
-    configuration.SPED.airDataRate = AIR_DATA_RATE_111_625;
+    configuration.SPED.uartBaudRate = UART_BPS_115200;
+    configuration.SPED.airDataRate = AIR_DATA_RATE_100_96;
     configuration.SPED.uartParity = MODE_00_8N1;
 
     configuration.OPTION.subPacketSetting = SPS_200_00;
     configuration.OPTION.RSSIAmbientNoise = RSSI_AMBIENT_NOISE_DISABLED;
-    configuration.OPTION.transmissionPower = POWER_22;
+    configuration.OPTION.transmissionPower = POWER_17;
 
     configuration.TRANSMISSION_MODE.enableRSSI = RSSI_ENABLED;
     configuration.TRANSMISSION_MODE.fixedTransmission = FT_FIXED_TRANSMISSION;
@@ -32,6 +32,11 @@ ResponseStatusContainer E220LoRaTransmitter::init()
 
     configurationStatus.close();
     return this->configure(configuration);
+#else
+    auto res = transmitter.begin();
+    auto description = res ? "LoRa module initialized successfully." : "Failed to initialize LoRa module.";
+    return ResponseStatusContainer(res, description);
+#endif
 }
 
 ResponseStatusContainer E220LoRaTransmitter::init(Configuration config)
@@ -115,33 +120,20 @@ ResponseStatusContainer E220LoRaTransmitter::transmit(TransmitDataType data)
 
         if (payloadSize < MAX_PAYLOAD_SIZE)
         {
-            // Se il chunk è più piccolo del massimo, riempi con 1 dopo il termine del payload
+            // Se il chunk è più piccolo del massimo, riempi con 0x01 dopo il termine del payload
             memset(packet.payload.data + payloadSize, 0x01, MAX_PAYLOAD_SIZE - payloadSize);
         }
 
         packet.calculateCRC();
         // Per debug: Stampa tutto il pacchetto in esadecimale
-        Serial.println("######## HEADER ########");
-        Serial.println("Packet Number: " + String(packet.header.packetNumber));
-        Serial.println("Total Chunks: " + String(packet.header.totalChunks));
-        Serial.println("Chunk Number: " + String(packet.header.chunkNumber));
-        Serial.println("Chunk Size: " + String(packet.header.chunkSize));
-        Serial.println("Payload Size: " + String(packet.header.payloadSize));
-        Serial.println("Timestamp: " + String(packet.header.timestamp));
-        Serial.println("Protocol Version: " + String(packet.header.protocolVersion));
-        Serial.println("######## PAYLOAD ########");
-        for (int i = 0; i < MAX_PAYLOAD_SIZE; i++)
-        {
-            Serial.print(String(packet.payload.data[i], HEX) + " ");
-        }
-        Serial.println();
-        Serial.println("CRC: " + String(packet.crc, HEX));
-
+        #ifdef __DEBUG__
+        packet.printPacket();
+        #endif
         auto rc = this->transmitter.sendFixedMessage(LORA_RECEIVER_ADDH, LORA_RECEIVER_ADDL, LORA_CHANNEL,
                                                      &packet, sizeof(Packet));
         /* Delay per evitare collisioni (perdita di pacchetti),
-            empiricamente il minimo è 30ms a distanza ravvicinata. */
-        delay(30);
+            empiricamente il minimo è 10ms. */
+        delay(10);
 
         if (rc.code != E220_SUCCESS)
         {

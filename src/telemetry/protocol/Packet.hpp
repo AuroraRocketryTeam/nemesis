@@ -64,6 +64,7 @@ struct Packet
      * @brief Calculate the CRC16 of the packet.
      */
     void calculateCRC();
+    void printPacket();
 };
-
 #pragma pack(pop) // Ripristina l'allineamento predefinito
+
