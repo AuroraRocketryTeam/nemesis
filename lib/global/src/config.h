@@ -14,8 +14,6 @@
 #define FREQUENCY_868  // 868 MHz
 
 #define LORA_SERIAL 1 // Serial port for LoRa (1 = Serial1, 2 = Serial2)
-#define LORA_RX_PIN D2 // The pin connected to the TX pin of the LoRa module
-#define LORA_TX_PIN D3 // The pin connected to the RX pin of the LoRa module
 
 /* Transmitter antenna address */
 #define LORA_ADDH 0x00
@@ -29,4 +27,6 @@
 /* Uncomment the following line to enable RSSI */
 #define ENABLE_RSSI
 
-#define SERIAL_BAUD_RATE 9600 // !NOTE Do not change as the LoRa module causes issues with higher baud rates. Needs testing.
+#define SERIAL_BAUD_RATE 115200 // Serial baud rate
+
+// #define TRANSMITTER_CONFIG_MODE_ENABLE // Enable configuration mode for the transmitter (needs to be tested on new hardware)
