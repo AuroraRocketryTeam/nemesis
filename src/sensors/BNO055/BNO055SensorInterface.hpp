@@ -30,34 +30,34 @@ public:
      * @brief Check if all sensor components are calibrated
      * @return the minimum calibration value among all sensors (accel, mag, gyro, system), from 0 (not calibrated) to 3 (fully calibrated)
      */
-    int calibrate();
+    int check_calibration();
     
     // ========== INDIVIDUAL CALIBRATION FUNCTIONS ==========
     /**
      * @brief Check accelerometer calibration status
      * @return the calibration value of the accelerometer, from 0 (not calibrated) to 3 (fully calibrated)
      */
-    int calibrate_accel();
+    int check_calibration_accel();
     
     /**
      * @brief Check magnetometer calibration status
      * @return the calibration value of the magnetometer, from 0 (not calibrated) to 3 (fully calibrated)
      * @note Magnetometer calibration typically requires figure-8 movements !!! Look for how to start the actual calibration
      */
-    int calibrate_mag();
+    int check_calibration_mag();
     
     /**
      * @brief Check gyroscope calibration status
      * @return the calibration value of the gyroscope, from 0 (not calibrated) to 3 (fully calibrated)
      * @note Gyroscope calibration requires the sensor to remain stationary
      */
-    int calibrate_gyro();
+    int check_calibration_gyro();
     
     /**
      * @brief Check system-wide calibration status
      * @return true if system calibration is complete (calibration level > 0), false otherwise
      */
-    int calibrate_sys();
+    int check_calibration_sys();
     
     // ========== SELF-TEST FUNCTIONS ==========
     /**
