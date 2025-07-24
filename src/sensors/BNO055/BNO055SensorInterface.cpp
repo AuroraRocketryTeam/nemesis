@@ -8,13 +8,13 @@ bool BNO055SensorInterface::init()
     return bno055_init(&bno) == BNO055_SUCCESS;
 }
 
-int BNO055SensorInterface::check_calibration()
+uint8_t BNO055SensorInterface::check_calibration()
 {
     // Return the minimum calibration value between all the sensors
     return (std::min({check_calibration_accel(), check_calibration_mag(), check_calibration_gyro(), check_calibration_sys()}));
 }
 
-int BNO055SensorInterface::check_calibration_accel() {
+uint8_t BNO055SensorInterface::check_calibration_accel() {
     uint8_t accel_calib = 0;
     
     // Get current accelerometer calibration status from BNO055 registers
@@ -23,7 +23,7 @@ int BNO055SensorInterface::check_calibration_accel() {
     return accel_calib;
 }
 
-int BNO055SensorInterface::check_calibration_mag() {
+uint8_t BNO055SensorInterface::check_calibration_mag() {
     uint8_t mag_calib = 0;
     
     // Get current magnetometer calibration status from BNO055 registers
@@ -32,7 +32,7 @@ int BNO055SensorInterface::check_calibration_mag() {
     return mag_calib;
 }
 
-int BNO055SensorInterface::check_calibration_gyro() {
+uint8_t BNO055SensorInterface::check_calibration_gyro() {
     uint8_t gyro_calib = 0;
     
     // Get current gyroscope calibration status from BNO055 registers
@@ -41,7 +41,7 @@ int BNO055SensorInterface::check_calibration_gyro() {
     return gyro_calib;
 }
 
-int BNO055SensorInterface::check_calibration_sys() {
+uint8_t BNO055SensorInterface::check_calibration_sys() {
     uint8_t sys_calib = 0;
     
     // Get current system calibration status from BNO055 registers
