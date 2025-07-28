@@ -1,4 +1,5 @@
 #include "RocketFSM.hpp"
+#include <config.h>
 
 RocketFSM::RocketFSM() : currentState(RocketState::INACTIVE), previousState(RocketState::INACTIVE),
                          stateStartTime(0), lastUpdateTime(0)
@@ -294,7 +295,7 @@ bool RocketFSM::isLaunchDetected()
 
 bool RocketFSM::isLiftoffStarted()
 {
-    return millis() - stateStartTime > 100; // Detect liftoff after 100ms from launch (previous condition satisfied) //!TODO: to be refactored with a configurable parameter
+    return millis() - stateStartTime > LIFTOFF_TIMEOUT_MS; // Detect liftoff after 100ms from launch (previous condition satisfied) //!TODO: to be refactored with a configurable parameter
 }
 
 bool RocketFSM::isAccelerationPhaseComplete()
@@ -314,7 +315,7 @@ bool RocketFSM::isApogeeReached()
 
 bool RocketFSM::isDrogueReady()
 {
-    return millis() - stateStartTime > 300; // Open drogue after 300ms, //!TODO: to be refactored with a configurable parameter
+    return millis() - stateStartTime > DROGUE_APOGEE_TIMEOUT; // Open drogue after 300ms, //!TODO: to be refactored with a configurable parameter
 }
 
 bool RocketFSM::isStabilizationComplete()
