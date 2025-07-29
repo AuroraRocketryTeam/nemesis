@@ -46,6 +46,14 @@ public:
     virtual void logSensorData(const SensorData sensorData) = 0;
 
     /**
+     * @brief Log sensor data with a specific sensor name.
+     * 
+     * @param sensorName The name of the sensor.
+     * @param sensorData The sensor data to log.
+     */
+    virtual void logSensorData(const std::string& sensorName, const SensorData sensorData) = 0;
+
+    /**
      * @brief Get all logged sensor data as a JSON list.
      * 
      * @return A json object.

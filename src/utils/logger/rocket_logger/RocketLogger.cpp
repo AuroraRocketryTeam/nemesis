@@ -24,6 +24,11 @@ void RocketLogger::logSensorData(const SensorData sensorData) {
     this->logDataList.push_back(LogData("SENSOR_DATA", logSensorData));
 }
 
+void RocketLogger::logSensorData(const std::string& sensorName, const SensorData sensorData) {
+    ILoggable* logSensorData = new LogSensorData(sensorName, sensorData);    
+    this->logDataList.push_back(LogData("SENSOR_DATA", logSensorData));
+}
+
 // Function to get all logged sensor data as a JSON list
 json RocketLogger::getJSONAll() const {
     json jsonDataList = json::array();

@@ -43,6 +43,14 @@ public:
     void logSensorData(const SensorData sensorData) override;
 
     /**
+     * @brief Log sensor data with a specific sensor name.
+     * 
+     * @param sensorName The name of the sensor.
+     * @param sensorData The sensor data to log.
+     */
+    void logSensorData(const std::string& sensorName, const SensorData sensorData) override;
+
+    /**
      * @brief Get all logged sensor data as a JSON list.
      * 
      * @return A json object.
