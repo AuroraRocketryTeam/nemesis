@@ -1,17 +1,17 @@
 #pragma once
 
 #include <ISensor.hpp>
-#include <TinyGPSPlus.h>
+#include <Wire.h>
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 #include <config.h>
 
-class GPSSensor : public ISensor
+class GPS : public ISensor
 {
 public:
-    GPSSensor();
+    GPS();
     bool init() override;
     std::optional<SensorData> getData() override;
 
 private:
-    TinyGPSPlus gps;
+    SFE_UBLOX_GNSS myGNSS;
 };
-
