@@ -27,7 +27,7 @@ KalmanFilter1D::KalmanFilter1D(Eigen::Vector3f gravity_value, Eigen::Vector3f ma
 // seaLevelPressurePa and T0 can be found online for day and location
 // h0 is the altitude over sea level for that location
 float pressureToAltitude(float pressurePa, float seaLevelPressurePa = 101325.0, float T0 = 288.15, float h0 = 0.0) {
-    return T0/0.0065 * (1.0 - std::pow(pressurePa / seaLevelPressurePa, 0.1903)) - h0;
+    return T0/0.0065f * (1.0f - std::pow(pressurePa / seaLevelPressurePa, 0.1903f)) - h0;
 }
 
 std::vector<std::vector<float>> KalmanFilter1D::step(float dt, float omega[3], float accel[3], float pressure) {
@@ -61,7 +61,7 @@ std::vector<std::vector<float>> KalmanFilter1D::step(float dt, float omega[3], f
     };
 
     // Estimate the barometer variance based on velocity
-    float barvar = (std::abs(std::pow(ekf.x[1],2))) * 0.35 + R0;  // This is the variance (std)^2
+    float barvar = (std::abs(std::pow(ekf.x[1], 2.0f))) * 0.35f + R0;  // This is the variance (std)^2
     //float barvar =  std * std;
     R[EKF_M*EKF_M - 1] = barvar; // Update the last element of R with the barometer variance
 

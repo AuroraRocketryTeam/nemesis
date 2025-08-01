@@ -1,8 +1,8 @@
 
 #include <vector>
 #include <tuple>
-#include "../../sensors/MPRLS/MPRLSSensor.hpp"
-#include "../../sensors/BNO055/BNO055Sensor.hpp"
+#include <MPRLSSensor.hpp>
+#include <BNO055Sensor.hpp>
 #include "./KalmanFilter1D.hpp"
  
 // Elements needed to update the kalman filter
