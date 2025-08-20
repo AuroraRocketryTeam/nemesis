@@ -146,7 +146,6 @@ void KalmanFilter1D::run_model(
 
     // Update the quaternion state
     Eigen::Quaternionf q_rot =  q_nominal*delta_q;
-    Eigen::Vector3f omega_abs = q_rot * omega_eigen;
     q_rot.normalize();
 
     // Acceleration of body --> Intertial frame
@@ -184,7 +183,6 @@ void KalmanFilter1D::computeJacobianF_tinyEKF(
     float h_pressure_sensor, 
     float z_gps) 
 {
-    const float epsilon = 1e-5f;
     float fx_base[EKF_N];
     float hx_dummy[EKF_M]; // Not used
     std::vector<float> original_state(ekf.x, ekf.x + EKF_N);
@@ -222,15 +220,15 @@ float* KalmanFilter1D::state() {
 // h0 is the altitude over sea level for that location
 float KalmanFilter1D::pressureToAltitude(
         float pressure, 
-        float seaLevelPressurePa = 101325.0,
-        float T0 = 288.15,
-        float L = 0.0065,
-        float g0 = 9.80665,
-        float R = 8.31447,
-        float M = 0.0289644) 
+        float seaLevelPressurePa,
+        float T0,
+        float L,
+        float g0,
+        float R,
+        float M) 
 {
     float exponent = R * L / (g0 * M);
-    float h = T0 / L * (1.0 - std::pow(pressure / seaLevelPressurePa, exponent));
+    float h = T0 / L * (1.0f - std::pow(pressure / seaLevelPressurePa, exponent));
     return h;
 }
 

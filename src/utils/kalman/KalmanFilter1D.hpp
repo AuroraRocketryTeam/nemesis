@@ -171,7 +171,7 @@ private:
      * @param M Molar mass of Earth's air in kg/mol.
      * @return float Estimated altitude.
      */
-    float KalmanFilter1D::pressureToAltitude(
+    float pressureToAltitude(
         float pressure, 
         float seaLevelPressurePa = 101325.0,
         float T0 = 288.15,
