@@ -84,6 +84,50 @@ bool SD::writeFile(std::string filename, std::variant<std::string, String, char 
 }
 
 /**
+ * @brief Appends content to a file
+ *
+ * @param filename the file to append to
+ * @param content  the content to append
+ * @return true if the content is appended, false otherwise
+ */
+bool SD::appendFile(std::string filename, std::variant<std::string, String, char *> content)
+{
+    if (!this->file->isOpen())
+    {
+        if(!this->openFile(filename))
+        {
+            return false;
+        }
+    }
+    
+    // Move to the end of the file for appending
+    this->file->seekEnd();
+    
+    char *data;
+    if (std::holds_alternative<std::string>(content))
+    {
+        std::string str = std::get<std::string>(content);
+        data = new char[str.length() + 1];
+        strcpy(data, str.c_str());
+    }
+    else if (std::holds_alternative<String>(content))
+    {
+        String str = std::get<String>(content);
+        data = new char[str.length() + 1];
+        strcpy(data, str.c_str());
+    }
+    else
+    {
+        char *str = std::get<char *>(content);
+        data = new char[strlen(str) + 1];
+        strcpy(data, str);
+    }
+    this->file->write(data, strlen(data));
+    delete[] data;
+    return true;
+}
+
+/**
  * @brief Reads the content of a file from start to end.
  * @note You need to free the memory after using the content.
  *
