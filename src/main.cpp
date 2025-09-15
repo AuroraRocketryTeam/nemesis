@@ -208,7 +208,7 @@ void initializeComponents()
     }
 
     // Initialize MPRLS sensors (barometers)
-    tcaSelect(I2C_MULTIPLEXER_MPRLS1);
+    // tcaSelect(I2C_MULTIPLEXER_MPRLS1);
     baro1 = new MS561101BA03(0x76);
     if (baro1 && baro1->init())
     {
@@ -223,7 +223,7 @@ void initializeComponents()
             rocketLogger->logError("Failed to initialize MPRLS1");
     }
 
-    tcaSelect(I2C_MULTIPLEXER_MPRLS2);
+    // tcaSelect(I2C_MULTIPLEXER_MPRLS2);
     baro2 = new MS561101BA03(0x77);
     if (baro2 && baro2->init())
     {
