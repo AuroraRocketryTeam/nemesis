@@ -1,15 +1,21 @@
-// Minimum calibration value to consider the sensor sufficiently calibrated, going from 0 to 3
+#define __DEBUG__
+
 #define SUFFICIENT_SENSOR_CALIBRATION 2
 #define SENSOR_LOOKUP_MAX_ATTEMPTS 5
 #define SENSOR_LOOKUP_TIMEOUT 1000
 
-#define BME680_I2C_ADDR_1 0x77
-#define BME680_I2C_ADDR_2 0x76
+
+#define MS56_I2C_ADDR_1 0x77
+#define MS56_I2C_ADDR_2 0x76
 #define BNO055_I2C_ADDR 0x28
-#define MPRLS_I2C_ADDR 0x18
-#define I2C_MULTIPLEXER_ADDRESS 0x70
-#define I2C_MULTIPLEXER_MPRLS1 1
-#define I2C_MULTIPLEXER_MPRLS2 0
+
+/* Legacy sensors */
+// #define BME680_I2C_ADDR_1 0x77
+// #define BME680_I2C_ADDR_2 0x76
+// #define MPRLS_I2C_ADDR 0x18
+// #define I2C_MULTIPLEXER_ADDRESS 0x70
+// #define I2C_MULTIPLEXER_MPRLS1 1
+// #define I2C_MULTIPLEXER_MPRLS2 0
 
 /* LoRa configuration */
 #define E220_22         // E220-900T22D
