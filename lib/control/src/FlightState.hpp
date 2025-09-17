@@ -1,4 +1,5 @@
 #pragma once
+
 #include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -6,122 +7,121 @@
 #include <freertos/semphr.h>
 
 /**
- * @brief Enum representing all possible rocket states
+ * @brief Enum representing all possible rocket states during mission lifecycle
+ *
+ * The rocket progresses through these states in a defined sequence from
+ * initial setup through recovery. Each state represents a distinct phase
+ * of operation with specific tasks and behaviors.
  */
 enum class RocketState
 {
     // Initial state
-    INACTIVE,
+    INACTIVE, // System startup, no active operations
 
     // Pre-flight phase
-    CALIBRATING,
-    READY_FOR_LAUNCH,
+    CALIBRATING,      // Sensor calibration and system checks
+    READY_FOR_LAUNCH, // Armed and waiting for launch detection
 
     // Flight phase
-    LAUNCH,
-    ACCELERATED_FLIGHT,
-    BALLISTIC_FLIGHT,
-    APOGEE,
+    LAUNCH,             // Launch sequence initiated
+    ACCELERATED_FLIGHT, // Active propulsion phase
+    BALLISTIC_FLIGHT,   // Coasting phase after motor burnout
+    APOGEE,             // Highest point reached
 
     // Recovery phase
-    STABILIZATION,
-    DECELERATION,
-    LANDING,
-    RECOVERED
+    STABILIZATION, // Drogue chute deployment and stabilization
+    DECELERATION,  // Main chute deployment phase
+    LANDING,       // Final descent and landing
+    RECOVERED      // Mission complete, rocket recovered
 };
 
 /**
- * @brief Enum representing flight phases for better organization
+ * @brief High-level flight phases grouping related states
+ *
+ * Used for simplified logic and resource management decisions.
+ * Multiple states can belong to the same phase.
  */
 enum class FlightPhase
 {
-    PRE_FLIGHT,
-    FLIGHT,
-    RECOVERY
+    PRE_FLIGHT, // INACTIVE, CALIBRATING, READY_FOR_LAUNCH
+    FLIGHT,     // LAUNCH, ACCELERATED_FLIGHT, BALLISTIC_FLIGHT, APOGEE
+    RECOVERY    // STABILIZATION, DECELERATION, LANDING, RECOVERED
 };
 
 /**
- * @brief Enum for FSM events
+ * @brief Events that can trigger state transitions
+ *
+ * Events are the primary mechanism for triggering state changes.
+ * They can be generated automatically by conditions or sent explicitly
+ * by system components.
  */
 enum class FSMEvent
 {
-    NONE,
-    START_CALIBRATION,
-    CALIBRATION_COMPLETE,
-    LAUNCH_DETECTED,
-    LIFTOFF_STARTED,
-    ACCELERATION_COMPLETE,
-    BALLISTIC_COMPLETE,
-    APOGEE_REACHED,
-    DROGUE_READY,
-    STABILIZATION_COMPLETE,
-    DECELERATION_COMPLETE,
-    LANDING_COMPLETE,
-    FORCE_TRANSITION,
-    EMERGENCY_ABORT
+    NONE = 0, // No event (default/invalid)
+
+    // Pre-flight events
+    START_CALIBRATION,    // Begin sensor calibration process
+    CALIBRATION_COMPLETE, // Calibration finished successfully
+
+    // Launch events
+    LAUNCH_DETECTED, // Launch sequence initiated
+    LIFTOFF_STARTED, // Physical liftoff detected
+
+    // Flight events
+    ACCELERATION_COMPLETE, // Motor burnout detected
+    BALLISTIC_COMPLETE,    // Ballistic phase complete (deprecated - use APOGEE_REACHED)
+    APOGEE_REACHED,        // Maximum altitude reached
+
+    // Recovery events
+    DROGUE_READY,           // Drogue chute ready for deployment
+    STABILIZATION_COMPLETE, // Vehicle stabilized after drogue deployment
+    DECELERATION_COMPLETE,  // Main chute phase complete
+    LANDING_COMPLETE,       // Touchdown detected
+
+    // System events
+    FORCE_TRANSITION, // Manual override transition
+    EMERGENCY_ABORT   // Emergency abort sequence
 };
 
 /**
- * @brief Structure for FSM event data
+ * @brief Container for event data passed through the FSM event system
+ *
+ * Encapsulates an event with optional target state (for force transitions)
+ * and arbitrary event data payload.
  */
 struct FSMEventData
 {
-    FSMEvent event;
-    RocketState targetState; // Used for force transitions
-    void *eventData;         // Optional event data
+    FSMEvent event;          // The event type
+    RocketState targetState; // Target state for FORCE_TRANSITION events
+    void *eventData;         // Optional event payload data
 
+    /**
+     * @brief Construct FSM event data
+     *
+     * @param e Event type
+     * @param target Target state for force transitions (default: INACTIVE)
+     * @param data Optional event payload (default: nullptr)
+     */
     FSMEventData(FSMEvent e, RocketState target = RocketState::INACTIVE, void *data = nullptr)
         : event(e), targetState(target), eventData(data) {}
 };
 
 /**
- * @brief Structure to hold state transition information
+ * @brief Represents a simple state transition rule (legacy)
+ *
+ * @deprecated Use TransitionManager and Transition struct instead
+ * @see TransitionManager
+ * @see Transition
  */
 struct StateTransition
 {
-    RocketState fromState;
-    RocketState toState;
-    FSMEvent triggerEvent;
+    RocketState fromState; // Source state
+    RocketState toState;   // Destination state
+    FSMEvent triggerEvent; // Triggering event
 
     StateTransition(RocketState from, RocketState to, FSMEvent event)
         : fromState(from), toState(to), triggerEvent(event) {}
 };
 
-/**
- * @brief Structure to hold FreeRTOS task configurations for each state
- */
-struct TaskConfig
-{
-    const char *name;
-    uint32_t stackSize;
-    UBaseType_t priority;
-    BaseType_t coreId;
-    bool shouldRun;
-
-    TaskConfig(const char *n = nullptr, uint32_t stack = 2048, UBaseType_t prio = 1,
-               BaseType_t core = tskNO_AFFINITY, bool run = false)
-        : name(n), stackSize(stack), priority(prio), coreId(core), shouldRun(run) {}
-};
-
-/**
- * @brief Structure to hold state actions with FreeRTOS task management
- */
-struct StateActions
-{
-    std::function<void()> onEntry;
-    std::function<void()> onExit;
-    TaskConfig dataCollectionTask;
-    TaskConfig telemetryTask;
-    TaskConfig sensorTask;
-    TaskConfig ekfTask;
-    TaskConfig recoveryTask;
-    TaskConfig gpsTask;
-    TaskConfig loggingTask;
-    TaskConfig apogeeDetectionTask;
-
-    StateActions() : onEntry(nullptr), onExit(nullptr) {}
-
-    StateActions(const std::function<void()> &entry,
-                 const std::function<void()> &exit = nullptr)
-        : onEntry(entry), onExit(exit) {}
-};
+// Forward declaration of TaskConfig (defined in ITask.hpp)
+struct TaskConfig;
