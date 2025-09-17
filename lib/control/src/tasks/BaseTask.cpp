@@ -18,15 +18,28 @@ bool BaseTask::start(const TaskConfig &config)
         return false;
 
     this->config = config;
-
-    BaseType_t result = xTaskCreatePinnedToCore(
-        taskWrapper,
-        config.name,
-        config.stackSize,
-        this,
-        static_cast<UBaseType_t>(config.priority),
-        &taskHandle,
-        static_cast<BaseType_t>(config.coreId));
+    BaseType_t result;
+    if (config.coreId == TaskCore::ANY_CORE)
+    {
+        result = xTaskCreate(
+            taskWrapper,
+            config.name,
+            config.stackSize,
+            this,
+            static_cast<UBaseType_t>(config.priority),
+            &taskHandle);
+    }
+    else
+    {
+        result = xTaskCreatePinnedToCore(
+            taskWrapper,
+            config.name,
+            config.stackSize,
+            this,
+            static_cast<UBaseType_t>(config.priority),
+            &taskHandle,
+            static_cast<BaseType_t>(config.coreId));
+    }
 
     if (result == pdPASS)
     {
