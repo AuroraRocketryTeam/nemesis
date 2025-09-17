@@ -12,7 +12,7 @@ RocketFSM::RocketFSM()
     Serial.println("[RocketFSM] Constructor called");
 
     // Initialize shared data
-    sharedData = std::make_unique<SharedSensorData>();
+    sharedData = std::make_shared<SharedSensorData>();
 
     Serial.println("[RocketFSM] Constructor completed");
 }
