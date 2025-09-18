@@ -6,17 +6,7 @@
 #include <map>
 #include <string>
 #include <KalmanFilter1D.hpp>
-
-enum class TaskType {
-    SENSOR,
-    EKF,
-    APOGEE_DETECTION,
-    RECOVERY,
-    DATA_COLLECTION,
-    TELEMETRY,
-    GPS,
-    LOGGING
-};
+#include "TaskConfig.hpp"
 
 class TaskManager {
 private:

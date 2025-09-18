@@ -50,7 +50,6 @@ public:
 private:
     void setupStateActions();
     void setupTransitions();
-    TaskType mapConfigToTaskType(const TaskConfig &config);
     void transitionTo(RocketState newState);
     void processEvent(const FSMEventData &eventData);
     void checkTransitions();

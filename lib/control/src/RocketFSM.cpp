@@ -258,37 +258,45 @@ void RocketFSM::setupStateActions()
                          { Serial.println("[STATE] Entering CALIBRATING"); })
         .setExitAction([this]()
                        { Serial.println("[STATE] Exiting CALIBRATING"); })
-        .addTask(TaskConfig("Sensor_Calib", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("Logging_Calib", 1536, TaskPriority::TASK_LOW, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Calib", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::LOGGING, "Logging_Calib", 1536, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
 
     // READY_FOR_LAUNCH state
     stateActions[RocketState::READY_FOR_LAUNCH] = std::make_unique<StateAction>(RocketState::READY_FOR_LAUNCH);
     stateActions[RocketState::READY_FOR_LAUNCH]
         ->setEntryAction([this]()
                          { Serial.println("[STATE] Entering READY_FOR_LAUNCH"); })
-        .addTask(TaskConfig("Sensor_Ready", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("Telemetry_Ready", 2048, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true))
-        .addTask(TaskConfig("Logging_Ready", 1536, TaskPriority::TASK_LOW, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 2048, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::TELEMETRY, "Telemetry_Ready", 2048, TaskPriority::TASK_LOW, TaskCore::CORE_1, true))
+        .addTask(TaskConfig(TaskType::LOGGING, "Logging_Ready", 1536, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
 
     // LAUNCH state
     stateActions[RocketState::LAUNCH] = std::make_unique<StateAction>(RocketState::LAUNCH);
     stateActions[RocketState::LAUNCH]
         ->setEntryAction([this]()
                          { Serial.println("[STATE] Entering LAUNCH"); })
-        .addTask(TaskConfig("Sensor_Launch", 2048, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("DataCollection_Launch", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 2048, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::DATA_COLLECTION, "DataCollection_Launch", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     // BALLISTIC_FLIGHT state
     stateActions[RocketState::BALLISTIC_FLIGHT] = std::make_unique<StateAction>(RocketState::BALLISTIC_FLIGHT);
     stateActions[RocketState::BALLISTIC_FLIGHT]
         ->setEntryAction([this]()
                          { Serial.println("[STATE] Entering BALLISTIC_FLIGHT"); })
-        .addTask(TaskConfig("Sensor_Ballistic", 2048, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("EKF_Ballistic", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("ApogeeDetection", 1536, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig("DataCollection_Ballistic", 2048, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 2048, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "EKF_Ballistic", 2048, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::APOGEE_DETECTION, "ApogeeDetection", 1536, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::DATA_COLLECTION, "DataCollection_Ballistic", 2048, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
 
-    // Add more states as needed...
+    stateActions[RocketState::APOGEE] = std::make_unique<StateAction>(RocketState::APOGEE);
+
+    stateActions[RocketState::STABILIZATION] = std::make_unique<StateAction>(RocketState::STABILIZATION);
+
+    stateActions[RocketState::DECELERATION] = std::make_unique<StateAction>(RocketState::DECELERATION);
+
+    stateActions[RocketState::LANDING] = std::make_unique<StateAction>(RocketState::LANDING);
+
+    stateActions[RocketState::RECOVERED] = std::make_unique<StateAction>(RocketState::RECOVERED);
 
     Serial.println("[RocketFSM] State actions setup complete");
 }
@@ -333,32 +341,6 @@ void RocketFSM::setupTransitions()
     Serial.println("[RocketFSM] Transitions setup complete");
 }
 
-// Helper function to map task configs to task types
-TaskType RocketFSM::mapConfigToTaskType(const TaskConfig &config)
-{
-    String name = String(config.name);
-
-    // Not so clean way to map names to types !!!
-    if (name.indexOf("Sensor") >= 0)
-        return TaskType::SENSOR;
-    if (name.indexOf("Telemetry") >= 0)
-        return TaskType::TELEMETRY;
-    if (name.indexOf("Logging") >= 0)
-        return TaskType::LOGGING;
-    if (name.indexOf("GPS") >= 0)
-        return TaskType::GPS;
-    if (name.indexOf("EKF") >= 0)
-        return TaskType::EKF;
-    if (name.indexOf("ApogeeDetection") >= 0)
-        return TaskType::APOGEE_DETECTION;
-    if (name.indexOf("Recovery") >= 0)
-        return TaskType::RECOVERY;
-    if (name.indexOf("DataCollection") >= 0)
-        return TaskType::DATA_COLLECTION;
-
-    return TaskType::SENSOR; // Default fallback
-}
-
 void RocketFSM::transitionTo(RocketState newState)
 {
     if (newState == currentState)
@@ -397,8 +379,7 @@ void RocketFSM::transitionTo(RocketState newState)
         {
             for (const auto &taskConfig : stateActions[currentState]->getTaskConfigs())
             {
-                TaskType taskType = mapConfigToTaskType(taskConfig);
-                taskManager->startTask(taskType, taskConfig);
+                taskManager->startTask(taskConfig.type, taskConfig);
             }
         }
 
