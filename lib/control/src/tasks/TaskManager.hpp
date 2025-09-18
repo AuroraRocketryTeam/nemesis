@@ -20,11 +20,16 @@ enum class TaskType {
 class TaskManager {
 private:
     std::map<TaskType, std::unique_ptr<ITask>> tasks;
-    std::shared_ptr<SharedSensorData> sharedData;
-    SemaphoreHandle_t* dataMutex;
+    std::shared_ptr<SharedSensorData> sensorData;
+    std::shared_ptr<SharedFilteredData> filteredData;
+    SemaphoreHandle_t sensorDataMutex;
+    SemaphoreHandle_t filteredDataMutex;
     
 public:
-    TaskManager(std::shared_ptr<SharedSensorData> data, SemaphoreHandle_t* mutex);
+    TaskManager(std::shared_ptr<SharedSensorData> sensorData, 
+            std::shared_ptr<SharedFilteredData> filteredData, 
+            SemaphoreHandle_t sensorMutex, 
+            SemaphoreHandle_t filteredMutex);
     ~TaskManager();
     
     void initializeTasks();

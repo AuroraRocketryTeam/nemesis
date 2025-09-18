@@ -338,6 +338,7 @@ TaskType RocketFSM::mapConfigToTaskType(const TaskConfig &config)
 {
     String name = String(config.name);
 
+    // Not so clean way to map names to types !!!
     if (name.indexOf("Sensor") >= 0)
         return TaskType::SENSOR;
     if (name.indexOf("Telemetry") >= 0)

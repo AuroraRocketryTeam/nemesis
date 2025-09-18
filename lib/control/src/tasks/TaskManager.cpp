@@ -5,8 +5,12 @@
 // #include "tasks/GpsTask.hpp"
 // ... include other specific task headers
 
-TaskManager::TaskManager(std::shared_ptr<SharedSensorData> data, SemaphoreHandle_t* mutex)
-    : sharedData(data), dataMutex(mutex) {
+TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData, 
+                        std::shared_ptr<SharedFilteredData> filteredData, 
+                        SemaphoreHandle_t sensorMutex, 
+                        SemaphoreHandle_t filteredMutex)
+    : sensorData(sensorData), filteredData(filteredData), 
+    sensorDataMutex(sensorMutex), filteredDataMutex(filteredMutex) {
     Serial.println("[TaskManager] Initialized");
 }
 
