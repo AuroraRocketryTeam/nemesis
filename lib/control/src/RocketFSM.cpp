@@ -13,6 +13,11 @@ RocketFSM::RocketFSM()
 
     // Initialize shared data
     sharedData = std::make_shared<SharedSensorData>();
+    
+    // Initialize Kalman filter NEED TO PASS READING VALUES FROM ANOTHER TASK !!!
+    Eigen::Vector3f gravity(0.0f, 0.0f, -9.81f);
+    Eigen::Vector3f magnetometer(0.0f, 1.0f, 0.0f);
+    kalmanFilter = std::make_shared<KalmanFilter1D>(gravity, magnetometer);
 
     Serial.println("[RocketFSM] Constructor completed");
 }
@@ -63,7 +68,7 @@ void RocketFSM::init()
     }
 
     // Initialize managers
-    taskManager = std::make_unique<TaskManager>(sharedData, &stateMutex);
+    taskManager = std::make_unique<TaskManager>(sharedData, kalmanFilter, stateMutex);
     taskManager->initializeTasks();
 
     transitionManager = std::make_unique<TransitionManager>();

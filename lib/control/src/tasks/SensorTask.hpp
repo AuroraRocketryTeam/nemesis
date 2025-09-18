@@ -1,22 +1,26 @@
 #pragma once
 
-#include "tasks/BaseTask.hpp"
+#include "BaseTask.hpp"
 #include "SharedData.hpp"
 #include <ISensor.hpp>
+#include <memory>
 
 class SensorTask : public BaseTask {
 private:
-    SharedSensorData* sharedData;
+    std::shared_ptr<SharedSensorData> sensorData;
+    SemaphoreHandle_t dataMutex;
+    
+    // Sensor pointers
     ISensor* bno055;
     ISensor* baro1;
     ISensor* baro2;
-    SemaphoreHandle_t* dataMutex;
-    
+
 public:
-    SensorTask(SharedSensorData* data, SemaphoreHandle_t* mutex);
+    SensorTask(std::shared_ptr<SharedSensorData> sensorData,
+               SemaphoreHandle_t mutex);
     
     void setSensors(ISensor* imu, ISensor* barometer1, ISensor* barometer2);
-    
+
 protected:
     void taskFunction() override;
     void onTaskStart() override;

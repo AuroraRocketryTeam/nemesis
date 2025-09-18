@@ -3,15 +3,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-EkfTask::EkfTask(SharedSensorData* sensorData,
-                SemaphoreHandle_t sensorDataMutex,
-                KalmanFilter1D* kalmanFilter)
-    : BaseTask("EkfTask"),
-      sensorData(sensorData), 
-      sensorDataMutex(sensorDataMutex), 
-      kalmanFilter(kalmanFilter) {
-}
-
 EkfTask::~EkfTask() {
     stop();
 }

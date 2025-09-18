@@ -5,6 +5,7 @@
 #include "states/StateAction.hpp"
 #include "states/TransitionManager.hpp"
 #include "SharedData.hpp"
+#include "KalmanFilter1D.hpp"
 #include <memory>
 #include <map>
 
@@ -29,6 +30,7 @@ private:
 
     // Shared data
     std::shared_ptr<SharedSensorData> sharedData;
+    std::shared_ptr<KalmanFilter1D> kalmanFilter;
 
 public:
     RocketFSM();

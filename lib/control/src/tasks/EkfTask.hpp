@@ -7,19 +7,22 @@
 // NEED TO BE PROPERLY INITIALIZED !!!
 class EkfTask : public BaseTask {
 public:
-    EkfTask(SharedSensorData* sensorData, 
+    EkfTask(std::shared_ptr<SharedSensorData> sensorData, 
         SemaphoreHandle_t sensorDataMutex,
-        KalmanFilter1D* kalmanFilter) : 
-        BaseTask("EkfTask") {}
+        std::shared_ptr<KalmanFilter1D> kalmanFilter) : 
+        BaseTask("EkfTask"),
+        sensorData(sensorData),
+        sensorDataMutex(sensorDataMutex),
+        kalmanFilter(kalmanFilter) {}
     ~EkfTask() override;
 
 protected:
     void taskFunction() override;
 
 private:
-    SharedSensorData* sensorData;
+    std::shared_ptr<SharedSensorData> sensorData;
     SemaphoreHandle_t sensorDataMutex;
-    KalmanFilter1D* kalmanFilter;
+    std::shared_ptr<KalmanFilter1D> kalmanFilter;
 
     uint32_t lastTimestamp = 0;
 };
