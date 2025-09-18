@@ -3,13 +3,13 @@
 #include <freertos/task.h>
 #include <Arduino.h>
 
-
-enum class TaskType {
+enum class TaskType
+{
     SENSOR,
     EKF,
     APOGEE_DETECTION,
     RECOVERY,
-    DATA_COLLECTION,
+    DATA_COLLECTION,        // This might be removed if SharedData are used in the corresponding tasks
     TELEMETRY,
     GPS,
     LOGGING
@@ -40,6 +40,16 @@ struct TaskConfig
     TaskCore coreId;
     bool shouldRun;
 
+    /**
+     * @brief Construct a new Task Config object
+     *
+     * @param t TaskType: The type of task @see enum class TaskType
+     * @param n const char*: The name of the task
+     * @param stack uint32_t: The stack size for the task
+     * @param prio TaskPriority: The priority of the task @see enum class TaskPriority
+     * @param core TaskCore: The core ID for the task @see enum class TaskCore
+     * @param run bool: Flag indicating if the task should run
+     */
     TaskConfig(TaskType t = TaskType::SENSOR, const char *n = "Task", uint32_t stack = 2048,
                TaskPriority prio = TaskPriority::TASK_MEDIUM,
                TaskCore core = TaskCore::ANY_CORE, bool run = true)
