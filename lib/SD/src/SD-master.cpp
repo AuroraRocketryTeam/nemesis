@@ -197,3 +197,14 @@ bool SD::clearSD()
 
     return true;
 }
+
+/**
+ * @brief Checks if a file exists on the SD card.
+ *
+ * @param filename the file to check for existence
+ * @return true if the file exists, false otherwise
+ */
+bool SD::fileExists(std::string filename)
+{
+    return this->SD.exists(filename.c_str());
+}
