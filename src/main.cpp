@@ -19,6 +19,17 @@
 #include <E220LoRaTransmitter.hpp>
 #include <KalmanFilter1D.hpp>
 #include <RocketFSM.hpp>
+#include <Logger.hpp> // Make sure this path is correct
+
+#include "esp_system.h"
+#include "esp_heap_caps.h"
+#include "esp_task_wdt.h"
+
+// Add global variables for health monitoring
+static uint32_t lastFreeHeap = 0;
+static uint32_t maxHeapUsed = 0;
+static unsigned long systemStartTime = 0;
+static uint32_t crashCounter = 0;
 
 // Type definitions
 using TransmitDataType = std::variant<char *, String, std::string, nlohmann::json>;
@@ -42,7 +53,8 @@ RocketFSM rocketFSM;
 void tcaSelect(uint8_t bus);
 void initializeComponents();
 void printSystemInfo();
-void monitorTasks();
+void createHealthMonitorTask();
+
 
 void testFSMTransitions(RocketFSM &fsm)
 {
@@ -56,22 +68,54 @@ void testFSMTransitions(RocketFSM &fsm)
     // Rendi i log più visibili
     fsm.start();
 
-    // Mostra lo stato ogni secondo
-    for (int i = 0; i < 50; i++)
+    // Use FreeRTOS timing for more reliable 1-second intervals
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000); // 1 second
+    
+    RocketState lastLoggedState = RocketState::INACTIVE;
+    unsigned long testStartTime = millis();
+    const unsigned long MAX_TEST_DURATION = 300000; // 5 minutes max
+    
+    while (millis() - testStartTime < MAX_TEST_DURATION)
     {
         RocketState currentState = fsm.getCurrentState();
-        Serial.printf("[TEST] Current state: %s (runtime: %lu ms)\n",
-                      fsm.getStateString(currentState).c_str(), millis());
+        
+        // Only log when state changes or every 10 seconds
+        static unsigned long lastPeriodicLog = 0;
+        bool stateChanged = (currentState != lastLoggedState);
+        bool periodicLog = (millis() - lastPeriodicLog > 10000);
+        
+        if (stateChanged || periodicLog)
+        {
+            LOG_INFO("Test", "State: %s (runtime: %lu ms, uptime: %.1f min)",
+                     fsm.getStateString(currentState).c_str(), 
+                     millis(),
+                     (millis() - testStartTime) / 60000.0);
+            
+            if (periodicLog)
+                lastPeriodicLog = millis();
+            
+            lastLoggedState = currentState;
+        }
 
         // Termina il test quando raggiungiamo lo stato RECOVERED
         if (currentState == RocketState::RECOVERED)
         {
-            Serial.println("\n=== FSM TEST COMPLETED SUCCESSFULLY ===");
-            Serial.println("All states were visited in the correct order!");
-            break;
+            LOG_INFO("Test", "=== FSM TEST COMPLETED SUCCESSFULLY ===");
+            LOG_INFO("Test", "All states were visited in the correct order!");
+            LOG_INFO("Test", "Total test duration: %.1f minutes", (millis() - testStartTime) / 60000.0);
+            while(true) vTaskDelay(pdMS_TO_TICKS(1000)); // Halt here
         }
 
-        delay(1000);
+        // Use FreeRTOS delay for precise timing
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+    }
+    
+    // Check for timeout
+    if (millis() - testStartTime >= MAX_TEST_DURATION)
+    {
+        LOG_WARNING("Test", "FSM test timed out after 5 minutes in state: %s", 
+                    fsm.getStateString(fsm.getCurrentState()).c_str());
     }
 }
 
@@ -121,27 +165,13 @@ void setup()
     digitalWrite(LED_RED, LOW);
     digitalWrite(LED_GREEN, HIGH);
 
-    Serial.println("=== System initialization complete ===");
-    Serial.println("FSM is now running with FreeRTOS tasks");
-    Serial.println("Monitor output for task execution and state transitions\n");
+    LOG_INFO("Main", "=== System initialization complete ===");
+    LOG_INFO("Main", "FSM is now running with FreeRTOS tasks");
+    LOG_INFO("Main", "Monitor output for task execution and state transitions");
 
-    // Create a task to monitor system status
-    xTaskCreatePinnedToCore(
-        [](void *param)
-        {
-            while (true)
-            {
-                monitorTasks();
-                vTaskDelay(pdMS_TO_TICKS(1000));
-            }
-        },
-        "SystemMonitor",
-        2048,
-        nullptr,
-        1,
-        nullptr,
-        1 // Run on Core 1
-    );
+    createHealthMonitorTask();
+
+    LOG_INFO("Main", "System crash monitoring enabled");
 }
 
 void loop()
@@ -302,48 +332,250 @@ void printSystemInfo()
     Serial.printf("SDK Version: %s\n", ESP.getSdkVersion());
 
     // FreeRTOS information
-    Serial.printf("FreeRTOS running on %d cores\n", portNUM_PROCESSORS);
-    Serial.printf("Tick rate: %d Hz\n", configTICK_RATE_HZ);
-    Serial.println("--- End System Information ---");
+    LOG_INFO("SysInfo", "FreeRTOS running on %d cores", portNUM_PROCESSORS);
+    LOG_INFO("SysInfo", "Tick rate: %d Hz", configTICK_RATE_HZ);
+    LOG_INFO("SysInfo", "--- End System Information ---");
 }
 
+/**
+ * @brief Create a Health Monitor Task object
+ *  Basic control
+    stop                    // Stop FSM
+    start                   // Start FSM
+
+    Force state transitions (useful for testing)
+    force LAUNCH            // Jump directly to launch state
+    force APOGEE            // Jump directly to apogee detection
+    force RECOVERED         // Jump directly to recovery state
+
+    System diagnostics
+    health                  // Get immediate health report
+    memory                  // Show detailed memory statistics
+    help                    // Show command list
+ *
+ */
+void createHealthMonitorTask()
+{
+    xTaskCreatePinnedToCore(
+        [](void *param)
+        {
+            LOG_INFO("HealthMon", "Health Monitor Task started");
+
+            // Initialize baseline values
+            systemStartTime = millis();
+            lastFreeHeap = ESP.getFreeHeap();
+            maxHeapUsed = ESP.getHeapSize() - lastFreeHeap;
+
+            TickType_t xLastWakeTime = xTaskGetTickCount();
+            uint32_t healthCheckCounter = 0;
+
+            while (true)
+            {
+                healthCheckCounter++;
+
+                // === MEMORY ANALYSIS ===
+                uint32_t freeHeap = ESP.getFreeHeap();
+                uint32_t minFreeHeap = ESP.getMinFreeHeap();
+                uint32_t maxAllocHeap = ESP.getMaxAllocHeap();
+                size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+                uint32_t heapUsed = ESP.getHeapSize() - freeHeap;
+
+                // Track maximum heap usage
+                if (heapUsed > maxHeapUsed)
+                {
+                    maxHeapUsed = heapUsed;
+                }
+
+                // Calculate memory fragmentation
+                double fragmentation = 0.0f;
+                if (freeHeap > 0)
+                {
+                    fragmentation = 100.0f * (1.0f - (float)largestBlock / freeHeap);
+                }
+
+                // Memory leak detection
+                int32_t heapDelta = (int32_t)lastFreeHeap - (int32_t)freeHeap;
+                lastFreeHeap = freeHeap;
+
+                // === TASK ANALYSIS ===
+                UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+                static UBaseType_t lastTaskCount = 0;
+
+                // Get current FSM state
+                RocketState currentState = rocketFSM.getCurrentState();
+                static RocketState lastState = RocketState::INACTIVE;
+                static unsigned long stateChangeTime = millis();
+
+                if (currentState != lastState)
+                {
+                    unsigned long timeInState = millis() - stateChangeTime;
+                    LOG_INFO("HealthMon", "State change: %s -> %s (was in previous state for %lu ms)",
+                             rocketFSM.getStateString(lastState).c_str(),
+                             rocketFSM.getStateString(currentState).c_str(),
+                             timeInState);
+                    lastState = currentState;
+                    stateChangeTime = millis();
+                }
+
+                // === CPU AND SYSTEM ANALYSIS ===
+                uint32_t cpuFreq = ESP.getCpuFreqMHz();
+
+                // Check for system anomalies
+                bool criticalCondition = false;
+                String alertMsg = "";
+
+                // Critical memory condition
+                if (freeHeap < 8192)
+                { // Less than 8KB
+                    criticalCondition = true;
+                    alertMsg += "CRITICAL_MEMORY ";
+                    LOG_ERROR("HealthMon", "CRITICAL: Only %u bytes free heap remaining!", freeHeap);
+                }
+
+                // High fragmentation
+                if (fragmentation > 30.0)
+                {
+                    criticalCondition = true;
+                    alertMsg += "HIGH_FRAGMENTATION ";
+                    LOG_WARNING("HealthMon", "High memory fragmentation: %.1f%%", fragmentation);
+                }
+
+                // Significant memory leak
+                if (heapDelta > 1024 && heapDelta > 0)
+                { // Lost more than 1KB
+                    alertMsg += "MEMORY_LEAK ";
+                    LOG_WARNING("HealthMon", "Possible memory leak: %d bytes lost", heapDelta);
+                }
+
+                // Task count anomaly
+                if (taskCount != lastTaskCount)
+                {
+                    if (taskCount > lastTaskCount + 2)
+                    {
+                        alertMsg += "TASK_LEAK ";
+                        LOG_WARNING("HealthMon", "Task count increased unexpectedly: %u -> %u",
+                                    lastTaskCount, taskCount);
+                    }
+                    lastTaskCount = taskCount;
+                }
+
+                // CPU frequency anomaly
+                if (cpuFreq < 240)
+                { // ESP32 should run at 240MHz
+                    alertMsg += "LOW_CPU_FREQ ";
+                    LOG_WARNING("HealthMon", "CPU frequency reduced to %u MHz", cpuFreq);
+                }
+
+                // === WATCHDOG MONITORING ===
+                esp_task_wdt_reset(); // Reset our own watchdog
+
+                // === PERIODIC DETAILED REPORTS ===
+                bool detailedReport = (healthCheckCounter % 12 == 0); // Every 60 seconds
+                bool summaryReport = (healthCheckCounter % 4 == 0);   // Every 20 seconds
+
+                if (detailedReport || criticalCondition)
+                {
+                    LOG_INFO("HealthMon", "=== DETAILED HEALTH REPORT  ===");
+                    LOG_INFO("HealthMon", "Memory: Free=%u, Min=%u, MaxAlloc=%u, Used=%u, MaxUsed=%u",
+                             freeHeap, minFreeHeap, maxAllocHeap, heapUsed, maxHeapUsed);
+                    LOG_INFO("HealthMon", "Fragmentation: %.1f%%, Largest block: %u bytes",
+                             fragmentation, largestBlock);
+                    LOG_INFO("HealthMon", "Tasks: Count=%u, CPU=%uMHz, State=%s",
+                             taskCount, cpuFreq, rocketFSM.getStateString(currentState).c_str());
+                    LOG_INFO("HealthMon", "Phase: %d, Time in current state: %lu ms",
+                             static_cast<int>(rocketFSM.getCurrentPhase()),
+                             millis() - stateChangeTime);
+
+                    // PSRAM info if available
+                    if (ESP.getPsramSize() > 0)
+                    {
+                        LOG_INFO("HealthMon", "PSRAM: Total=%d, Free=%d",
+                                 ESP.getPsramSize(), ESP.getFreePsram());
+                    }
+
+                    if (criticalCondition)
+                    {
+                        LOG_ERROR("HealthMon", "ALERTS: %s", alertMsg.c_str());
+
+                        // Take emergency action for critical conditions
+                        if (freeHeap < 4096)
+                        { // Less than 4KB - emergency stop
+                            LOG_ERROR("HealthMon", "EMERGENCY: Stopping FSM due to critical memory shortage");
+                            rocketFSM.stop();
+
+                            // Try to free some memory
+                            LOG_ERROR("HealthMon", "Attempting emergency cleanup...");
+                            // Force garbage collection if possible
+                            vTaskDelay(pdMS_TO_TICKS(100));
+
+                            crashCounter++;
+                            if (crashCounter > 3)
+                            {
+                                LOG_ERROR("HealthMon", "Multiple critical conditions - restarting system");
+                                esp_restart();
+                            }
+                        }
+                    }
+                    LOG_INFO("HealthMon", "=== END HEALTH REPORT ===");
+                }
+                else if (summaryReport)
+                {
+                    LOG_INFO("HealthMon", "Health: Free=%uKB, Frag=%.1f%%, Tasks=%u, State=%s%s",
+                             freeHeap / 1024, fragmentation, taskCount,
+                             rocketFSM.getStateString(currentState).c_str(),
+                             alertMsg.length() > 0 ? " [ALERTS]" : "");
+                }
+
+                // === PERFORMANCE MONITORING ===
+                // Check if any task is consuming too much CPU time
+                static TickType_t lastTickCount = 0;
+                TickType_t currentTicks = xTaskGetTickCount();
+                TickType_t ticksDelta = currentTicks - lastTickCount;
+                lastTickCount = currentTicks;
+
+                if (ticksDelta > pdMS_TO_TICKS(6000))
+                { // If we're delayed by more than 1 second
+                    LOG_WARNING("HealthMon", "Health monitor delayed by %lu ms - system may be overloaded",
+                                pdTICKS_TO_MS(ticksDelta - pdMS_TO_TICKS(5000)));
+                }
+
+                // === STACK MONITORING ===
+                UBaseType_t healthMonitorStack = uxTaskGetStackHighWaterMark(NULL);
+                if (healthMonitorStack < 256)
+                { // Less than 256 bytes stack remaining
+                    LOG_ERROR("HealthMon", "Health monitor stack low: %u bytes remaining", healthMonitorStack);
+                }
+
+                // Sleep until next check (every 5 seconds)
+                vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(5000));
+            }
+        },
+        "HealthMonitor",
+        3072, // Increased stack size for detailed reporting
+        nullptr,
+        3, // High priority - higher than monitoring tasks
+        nullptr,
+        0 // Run on Core 0 (opposite of SystemMonitor)
+    );
+}
+
+// Also update monitorTasks() to be lighter since HealthMonitor handles most of this
 void monitorTasks()
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     while (true)
     {
-        // Print system status every 10 seconds
+        // Reduced frequency logging - HealthMonitor handles detailed monitoring
         static unsigned long lastStatusPrint = 0;
-        if (millis() - lastStatusPrint > 10000)
+        if (millis() - lastStatusPrint > 30000) // Every 30 seconds instead of 10
         {
             lastStatusPrint = millis();
-
-            Serial.println("\n--- System Status ---");
-            Serial.printf("Runtime: %lu ms\n", millis());
-            Serial.printf("Free Heap: %u bytes\n", ESP.getFreeHeap());
-            Serial.printf("Min Free Heap: %u bytes\n", ESP.getMinFreeHeap());
-            Serial.printf("Current State: %s\n", rocketFSM.getStateString(rocketFSM.getCurrentState()).c_str());
-            Serial.printf("Current Phase: %d\n", static_cast<int>(rocketFSM.getCurrentPhase()));
-
-            // Task information
-            UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-            Serial.printf("Active tasks: %u\n", taskCount);
-
-            Serial.println("--- End Status ---\n");
+            LOG_INFO("Monitor", "Quick status: Heap=%uKB, Tasks=%u",
+                     ESP.getFreeHeap() / 1024, uxTaskGetNumberOfTasks());
         }
 
-        // Check for emergency conditions
-        if (ESP.getFreeHeap() < 10000)
-        { // Less than 10KB free
-            Serial.println("[WARNING] Low memory condition detected!");
-            if (rocketLogger)
-            {
-                rocketLogger->logWarning("Low memory condition");
-            }
-        }
-
-        // Monitor for manual commands via Serial
+        // Monitor for manual commands via Serial (keep this functionality)
         if (Serial.available())
         {
             String command = Serial.readStringUntil('\n');
@@ -359,13 +591,20 @@ void monitorTasks()
                 Serial.println("Manual FSM start requested");
                 rocketFSM.start();
             }
+            else if (command == "health")
+            {
+                // Force immediate detailed health report
+                LOG_INFO("Monitor", "Manual health check requested");
+                Logger::debugMemory("Manual health check");
+                LOG_INFO("Monitor", "Current state: %s, Tasks: %u",
+                         rocketFSM.getStateString(rocketFSM.getCurrentState()).c_str(),
+                         uxTaskGetNumberOfTasks());
+            }
             else if (command.startsWith("force "))
             {
-                // Example: "force LAUNCH" to force transition to LAUNCH state
                 String stateName = command.substring(6);
                 stateName.toUpperCase();
 
-                // Map string to state (add more as needed)
                 if (stateName == "LAUNCH")
                 {
                     rocketFSM.forceTransition(RocketState::LAUNCH);
@@ -385,18 +624,28 @@ void monitorTasks()
             }
             else if (command == "help")
             {
-                Serial.println("Available commands:");
-                Serial.println("  stop - Stop FSM");
-                Serial.println("  start - Start FSM");
-                Serial.println("  force <STATE> - Force transition to state");
-                Serial.println("  help - Show this help");
+                SemaphoreHandle_t serialMutex = Logger::getSerialMutex();
+                if (xSemaphoreTake(serialMutex, pdMS_TO_TICKS(50)) == pdTRUE)
+                {
+                    Serial.println("Available commands:");
+                    Serial.println("  stop - Stop FSM");
+                    Serial.println("  start - Start FSM");
+                    Serial.println("  health - Show detailed health status");
+                    Serial.println("  force <STATE> - Force transition to state");
+                    Serial.println("  memory - Show memory stats");
+                    Serial.println("  help - Show this help");
+                    xSemaphoreGive(serialMutex);
+                }
+            }
+            else if (command == "memory")
+            {
+                Logger::debugMemory("Manual request");
             }
         }
 
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000)); // 1Hz monitoring
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000)); // 2 second monitoring
     }
 }
-
 void tcaSelect(uint8_t bus)
 {
     if (bus > 7)

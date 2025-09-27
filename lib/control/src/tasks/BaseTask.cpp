@@ -1,5 +1,6 @@
 #include "BaseTask.hpp"
 #include "esp_heap_caps.h"
+#include <Logger.hpp>
 
 BaseTask::BaseTask(const char *name)
     : taskHandle(nullptr), running(false), taskName(name)
@@ -57,15 +58,27 @@ void BaseTask::stop()
     if (!running)
         return;
 
+    // Set flag first
     running = false;
 
-    if (taskHandle)
+    // Give task time to see the flag change
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // Verify task handle is still valid
+    if (taskHandle != nullptr)
     {
-        vTaskDelete(taskHandle);
+        // Check if task actually exists
+        eTaskState taskState = eTaskGetState(taskHandle);
+        if (taskState != eDeleted)
+        {
+            vTaskSuspend(taskHandle);
+            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelete(taskHandle);
+        }
         taskHandle = nullptr;
     }
 
-    Serial.printf("[TASK] %s stopped\n", taskName);
+    LOG_INFO("BaseTask", "Task %s stopped safely", taskName);
 }
 
 void BaseTask::taskWrapper(void *parameter)
