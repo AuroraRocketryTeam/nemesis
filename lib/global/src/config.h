@@ -48,6 +48,8 @@
 #define DROGUE_APOGEE_TIMEOUT 300 // Threshold for opening the drogue parachute after apogee is detected
 
 // Kalman Constants
+#define NUM_CALIBRATION_SAMPLES 200
+#define STD_THRESHOLD 0.1f
 #define SEA_LEVEL 165.0f
 #define H_BIAS_PRESSURE_SENSOR 2.0f
 #define GPS_BIAS 3.0f
