@@ -6,6 +6,7 @@
 #include "states/TransitionManager.hpp"
 #include "SharedData.hpp"
 #include "KalmanFilter1D.hpp"
+#include "Logger.hpp"
 #include <memory>
 #include <map>
 
@@ -27,13 +28,22 @@ private:
     RocketState previousState;
     unsigned long stateStartTime;
     volatile bool isRunning;
+    volatile bool isTransitioning;
 
     // Shared data
     std::shared_ptr<SharedSensorData> sharedData;
     std::shared_ptr<KalmanFilter1D> kalmanFilter;
+    SemaphoreHandle_t sensorDataMutex;
+    std::shared_ptr<ISensor> bno055;
+    std::shared_ptr<ISensor> baro1;
+    std::shared_ptr<ISensor> baro2;
+    std::shared_ptr<ISensor> gps;
 
 public:
-    RocketFSM();
+    RocketFSM(std::shared_ptr<ISensor> imu = nullptr,
+              std::shared_ptr<ISensor> barometer1 = nullptr,
+              std::shared_ptr<ISensor> barometer2 = nullptr,
+              std::shared_ptr<ISensor> gpsModule = nullptr);
     ~RocketFSM();
 
     // IStateMachine interface
