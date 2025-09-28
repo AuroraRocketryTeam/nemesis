@@ -7,11 +7,11 @@
 
 // Debug macro that only prints when __DEBUG__ is defined
 #ifdef __DEBUG__
-    #define DEBUG_PRINT(x) Serial.println(x)
-    #define DEBUG_PRINTF(format, ...) Serial.printf(format, ##__VA_ARGS__)
+#define DEBUG_PRINT(x) Serial.println(x)
+#define DEBUG_PRINTF(format, ...) Serial.printf(format, ##__VA_ARGS__)
 #else
-    #define DEBUG_PRINT(x)
-    #define DEBUG_PRINTF(format, ...)
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINTF(format, ...)
 #endif
 
 // Add this utility method to RocketFSM class header
@@ -27,25 +27,36 @@ void debugMemory(const char *location)
 // Event queue size
 static const size_t EVENT_QUEUE_SIZE = 10;
 
-RocketFSM::RocketFSM()
-    : fsmTaskHandle(nullptr), eventQueue(nullptr), stateMutex(nullptr), currentState(RocketState::INACTIVE), previousState(RocketState::INACTIVE), stateStartTime(0), isRunning(false)
+RocketFSM::RocketFSM(std::shared_ptr<ISensor> imu,
+                     std::shared_ptr<ISensor> barometer1,
+                     std::shared_ptr<ISensor> barometer2,
+                     std::shared_ptr<ISensor> gpsModule)
+    : fsmTaskHandle(nullptr), eventQueue(nullptr), stateMutex(nullptr),
+      currentState(RocketState::INACTIVE), previousState(RocketState::INACTIVE),
+      stateStartTime(0), isRunning(false), isTransitioning(false),
+      bno055(imu), baro1(barometer1), baro2(barometer2), gps(gpsModule)
 {
-    Serial.println("[RocketFSM] Constructor called");
+    LOG_INFO("FSM", "Constructor called");
+    LOG_INFO("FSM", "Sensors received: IMU=%s, Baro1=%s, Baro2=%s, GPS=%s",
+             bno055 ? "OK" : "NULL",
+             baro1 ? "OK" : "NULL",
+             baro2 ? "OK" : "NULL",
+             gps ? "OK" : "NULL");
 
     // Initialize shared data
     sharedData = std::make_shared<SharedSensorData>();
-    
-    // Initialize Kalman filter NEED TO PASS READING VALUES FROM ANOTHER TASK !!!
+
+    // Initialize Kalman filter
     Eigen::Vector3f gravity(0.0f, 0.0f, -9.81f);
     Eigen::Vector3f magnetometer(0.0f, 1.0f, 0.0f);
     kalmanFilter = std::make_shared<KalmanFilter1D>(gravity, magnetometer);
 
-    Serial.println("[RocketFSM] Constructor completed");
+    LOG_INFO("FSM", "Constructor completed");
 }
 
 RocketFSM::~RocketFSM()
 {
-    Serial.println("[RocketFSM] Destructor called");
+    LOG_INFO("RocketFSM", "Destructor called");
     stop();
 
     // Clean up FreeRTOS objects
@@ -61,12 +72,12 @@ RocketFSM::~RocketFSM()
         stateMutex = nullptr;
     }
 
-    Serial.println("[RocketFSM] Destructor completed");
+    LOG_INFO("RocketFSM", "Destructor completed");
 }
 
 void RocketFSM::init()
 {
-    Serial.println("[RocketFSM] Initializing...");
+    LOG_INFO("RocketFSM", "Initializing...");
 
     // Initialize watchdog timer
     esp_task_wdt_init(10, true); // 10 second timeout
@@ -75,21 +86,30 @@ void RocketFSM::init()
     eventQueue = xQueueCreate(EVENT_QUEUE_SIZE, sizeof(FSMEventData));
     if (!eventQueue)
     {
-        Serial.println("[RocketFSM] ERROR: Failed to create event queue");
+        LOG_ERROR("RocketFSM", "ERROR: Failed to create event queue");
         return;
     }
 
     stateMutex = xSemaphoreCreateMutex();
     if (!stateMutex)
     {
-        Serial.println("[RocketFSM] ERROR: Failed to create state mutex");
+        LOG_ERROR("RocketFSM", "ERROR: Failed to create state mutex");
         vQueueDelete(eventQueue);
         eventQueue = nullptr;
         return;
     }
-
+    sensorDataMutex = xSemaphoreCreateMutex();
+    if (!sensorDataMutex)
+    {
+        LOG_ERROR("RocketFSM", "ERROR: Failed to create sensor data mutex");
+        vQueueDelete(eventQueue);
+        eventQueue = nullptr;
+        vSemaphoreDelete(stateMutex);
+        stateMutex = nullptr;
+        return;
+    }
     // Initialize managers
-    taskManager = std::make_unique<TaskManager>(sharedData, kalmanFilter, stateMutex);
+    taskManager = std::make_unique<TaskManager>(sharedData, kalmanFilter, bno055, baro1, baro2, gps, sensorDataMutex);
     taskManager->initializeTasks();
 
     transitionManager = std::make_unique<TransitionManager>();
@@ -103,16 +123,16 @@ void RocketFSM::init()
     previousState = RocketState::INACTIVE;
     stateStartTime = millis();
 
-    Serial.printf("[RocketFSM] Initialization complete - Free heap: %u bytes\n", ESP.getFreeHeap());
+    LOG_INFO("RocketFSM", "Initialization complete - Free heap: %u bytes", ESP.getFreeHeap());
 }
 
 void RocketFSM::start()
 {
-    Serial.println("[RocketFSM] Starting...");
+    LOG_INFO("RocketFSM", "Starting...");
 
     if (isRunning)
     {
-        Serial.println("[RocketFSM] Already running");
+        LOG_WARNING("RocketFSM", "Already running");
         return;
     }
 
@@ -128,21 +148,21 @@ void RocketFSM::start()
     if (result == pdPASS)
     {
         isRunning = true;
-        Serial.println("[RocketFSM] Started successfully");
+        LOG_INFO("RocketFSM", "Started successfully");
     }
     else
     {
-        Serial.println("[RocketFSM] ERROR: Failed to create FSM task");
+        LOG_ERROR("RocketFSM", "ERROR: Failed to create FSM task");
     }
 }
 
 void RocketFSM::stop()
 {
-    Serial.println("[RocketFSM] Stopping...");
+    LOG_INFO("RocketFSM", "Stopping...");
 
     if (!isRunning)
     {
-        Serial.println("[RocketFSM] Already stopped");
+        LOG_WARNING("RocketFSM", "Already stopped");
         return;
     }
 
@@ -161,14 +181,14 @@ void RocketFSM::stop()
         fsmTaskHandle = nullptr;
     }
 
-    Serial.println("[RocketFSM] Stopped");
+    LOG_INFO("RocketFSM", "Stopped");
 }
 
 bool RocketFSM::sendEvent(FSMEvent event, RocketState targetState, void *eventData)
 {
     if (!eventQueue)
     {
-        Serial.println("[RocketFSM] ERROR: Event queue not initialized");
+        LOG_ERROR("RocketFSM", "ERROR: Event queue not initialized");
         return false;
     }
 
@@ -177,12 +197,12 @@ bool RocketFSM::sendEvent(FSMEvent event, RocketState targetState, void *eventDa
     BaseType_t result = xQueueSend(eventQueue, &eventMsg, pdMS_TO_TICKS(100));
     if (result == pdPASS)
     {
-        Serial.printf("[RocketFSM] Event %d sent successfully\n", static_cast<int>(event));
+        LOG_INFO("RocketFSM", "Event %d sent successfully", static_cast<int>(event));
         return true;
     }
     else
     {
-        Serial.printf("[RocketFSM] ERROR: Failed to send event %d (queue full?)\n", static_cast<int>(event));
+        LOG_ERROR("RocketFSM", "ERROR: Failed to send event %d (queue full?)", static_cast<int>(event));
         return false;
     }
 }
@@ -228,7 +248,7 @@ FlightPhase RocketFSM::getCurrentPhase()
 
 void RocketFSM::forceTransition(RocketState newState)
 {
-    Serial.printf("[RocketFSM] Force transition to %s\n", getStateString(newState).c_str());
+    LOG_INFO("RocketFSM", "Force transition to %s", getStateString(newState).c_str());
     sendEvent(FSMEvent::FORCE_TRANSITION, newState);
 }
 
@@ -270,79 +290,88 @@ String RocketFSM::getStateString(RocketState state) const
 
 void RocketFSM::setupStateActions()
 {
-    Serial.println("[RocketFSM] Setting up state actions...");
+    LOG_INFO("RocketFSM", "Setting up state actions...");
 
     // INACTIVE state
     stateActions[RocketState::INACTIVE] = std::make_unique<StateAction>(RocketState::INACTIVE);
     stateActions[RocketState::INACTIVE]->setEntryAction([this]()
-                                                        { Serial.println("[STATE] Entering INACTIVE"); });
+                                                        { LOG_INFO("RocketFSM", "Entering INACTIVE"); });
 
     // CALIBRATING state
     stateActions[RocketState::CALIBRATING] = std::make_unique<StateAction>(RocketState::CALIBRATING);
     stateActions[RocketState::CALIBRATING]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering CALIBRATING"); })
+                         { LOG_INFO("RocketFSM", "Entering CALIBRATING"); })
         .setExitAction([this]()
-                       { Serial.println("[STATE] Exiting CALIBRATING"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Calib1", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
+                       { LOG_INFO("RocketFSM", "Exiting CALIBRATING"); })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Calib1", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Calib", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
     // READY_FOR_LAUNCH state
     stateActions[RocketState::READY_FOR_LAUNCH] = std::make_unique<StateAction>(RocketState::READY_FOR_LAUNCH);
     stateActions[RocketState::READY_FOR_LAUNCH]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering READY_FOR_LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
+                         { LOG_INFO("RocketFSM", "Entering READY_FOR_LAUNCH"); })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
+
     // LAUNCH state
     stateActions[RocketState::LAUNCH] = std::make_unique<StateAction>(RocketState::LAUNCH);
     stateActions[RocketState::LAUNCH]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
+                         { LOG_INFO("RocketFSM", "Entering LAUNCH"); })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
+    ;
     stateActions[RocketState::ACCELERATED_FLIGHT] = std::make_unique<StateAction>(RocketState::ACCELERATED_FLIGHT);
     stateActions[RocketState::ACCELERATED_FLIGHT]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering ACCELERATED_FLIGHT"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
+                         { LOG_INFO("RocketFSM", "Entering ACCELERATED_FLIGHT"); })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Calib", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true));
+    ;
+    ;
     // BALLISTIC_FLIGHT state
     stateActions[RocketState::BALLISTIC_FLIGHT] = std::make_unique<StateAction>(RocketState::BALLISTIC_FLIGHT);
     stateActions[RocketState::BALLISTIC_FLIGHT]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering BALLISTIC_FLIGHT"); })
+                         { LOG_INFO("RocketFSM", "Entering BALLISTIC_FLIGHT"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
 
     stateActions[RocketState::APOGEE] = std::make_unique<StateAction>(RocketState::APOGEE);
     stateActions[RocketState::APOGEE]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering APOGEE"); })
+                         { LOG_INFO("RocketFSM", "Entering APOGEE"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::STABILIZATION] = std::make_unique<StateAction>(RocketState::STABILIZATION);
     stateActions[RocketState::STABILIZATION]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering STABILIZATION"); })
+                         { LOG_INFO("RocketFSM", "Entering STABILIZATION"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true));
 
     stateActions[RocketState::DECELERATION] = std::make_unique<StateAction>(RocketState::DECELERATION);
     stateActions[RocketState::DECELERATION]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering DECELERATION"); })
+                         { LOG_INFO("RocketFSM", "Entering DECELERATION"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::LANDING] = std::make_unique<StateAction>(RocketState::LANDING);
     stateActions[RocketState::LANDING]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering LANDING"); })
+                         { LOG_INFO("RocketFSM", "Entering LANDING"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Landing", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_0, true));
     stateActions[RocketState::RECOVERED] = std::make_unique<StateAction>(RocketState::RECOVERED);
     stateActions[RocketState::RECOVERED]
         ->setEntryAction([this]()
-                         { Serial.println("[STATE] Entering RECOVERED"); })
+                         { LOG_INFO("RocketFSM", "Entering RECOVERED"); })
         .addTask(TaskConfig(TaskType::SENSOR, "Sensor_PostFlight", 4096, TaskPriority::TASK_LOW, TaskCore::CORE_1, true));
-    Serial.println("[RocketFSM] State actions setup complete");
+    LOG_INFO("RocketFSM", "State actions setup complete");
 }
 
 void RocketFSM::setupTransitions()
 {
-    Serial.println("[RocketFSM] Setting up transitions...");
+    LOG_INFO("RocketFSM", "Setting up transitions...");
 
     // Basic event-driven transitions
     transitionManager->addTransition(Transition(
@@ -406,7 +435,7 @@ void RocketFSM::setupTransitions()
 
     // Add more transitions as needed...
 
-    Serial.println("[RocketFSM] Transitions setup complete");
+    LOG_INFO("RocketFSM", "Transitions setup complete");
 }
 
 void RocketFSM::transitionTo(RocketState newState)
@@ -418,9 +447,9 @@ void RocketFSM::transitionTo(RocketState newState)
 
     if (xSemaphoreTake(stateMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
     {
-        Serial.printf("\n[TRANSITION] %s -> %s\n",
-                      getStateString(currentState).c_str(),
-                      getStateString(newState).c_str());
+        LOG_INFO("RocketFSM", "[TRANSITION] %s -> %s",
+                 getStateString(currentState).c_str(),
+                 getStateString(newState).c_str());
 
         // Execute exit action for current state
         if (stateActions[currentState])
@@ -453,25 +482,25 @@ void RocketFSM::transitionTo(RocketState newState)
 
         xSemaphoreGive(stateMutex);
 
-        Serial.printf("[TRANSITION] Complete - Free heap: %u bytes\n", ESP.getFreeHeap());
+        LOG_INFO("RocketFSM", "[TRANSITION] Complete - Free heap: %u bytes", ESP.getFreeHeap());
     }
     else
     {
-        Serial.println("[TRANSITION] ERROR: Failed to acquire state mutex");
+        LOG_ERROR("RocketFSM", "[TRANSITION] ERROR: Failed to acquire state mutex");
     }
 }
 
 void RocketFSM::processEvent(const FSMEventData &eventData)
 {
     debugMemory("Before processEvent");
-    Serial.printf("[RocketFSM] Processing event %d in state %s\n",
-                  static_cast<int>(eventData.event),
-                  getStateString(currentState).c_str());
+    LOG_INFO("RocketFSM", "Processing event %d in state %s",
+             static_cast<int>(eventData.event),
+             getStateString(currentState).c_str());
 
     if (eventData.event == FSMEvent::FORCE_TRANSITION)
     {
-        Serial.printf("[RocketFSM] Force transition to %s\n",
-                      getStateString(eventData.targetState).c_str());
+        LOG_INFO("RocketFSM", "Force transition to %s",
+                 getStateString(eventData.targetState).c_str());
         transitionTo(eventData.targetState);
         return;
     }
@@ -484,9 +513,9 @@ void RocketFSM::processEvent(const FSMEventData &eventData)
     }
     else
     {
-        Serial.printf("[RocketFSM] No valid transition for event %d in state %s\n",
-                      static_cast<int>(eventData.event),
-                      getStateString(currentState).c_str());
+        LOG_ERROR("RocketFSM", "No valid transition for event %d in state %s",
+                  static_cast<int>(eventData.event),
+                  getStateString(currentState).c_str());
     }
 }
 
@@ -596,7 +625,7 @@ void RocketFSM::fsmTaskWrapper(void *parameter)
 
 void RocketFSM::fsmTask()
 {
-    Serial.println("[RocketFSM] Main task started");
+    LOG_INFO("RocketFSM", "Main task started");
 
     FSMEventData eventData(FSMEvent::NONE);
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -618,16 +647,16 @@ void RocketFSM::fsmTask()
         // Periodic status output
         if (loopCounter % 20 == 0)
         {
-            Serial.printf("[FSM] Loop %lu: State=%s, Time in state=%lu ms, Free heap=%u\n",
-                          loopCounter,
-                          getStateString(currentState).c_str(),
-                          millis() - stateStartTime,
-                          ESP.getFreeHeap());
+            LOG_INFO("RocketFSM", "Loop %lu: State=%s, Time in state=%lu ms, Free heap=%u",
+                     loopCounter,
+                     getStateString(currentState).c_str(),
+                     millis() - stateStartTime,
+                     ESP.getFreeHeap());
         }
 
         loopCounter++;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50)); // 20Hz
     }
 
-    Serial.println("[RocketFSM] Main task ended");
+    LOG_INFO("RocketFSM", "Main task ended");
 }
