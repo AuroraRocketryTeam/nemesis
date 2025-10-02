@@ -37,13 +37,17 @@ private:
     std::shared_ptr<ISensor> bno055;
     std::shared_ptr<ISensor> baro1;
     std::shared_ptr<ISensor> baro2;
+    std::shared_ptr<ISensor> accl;
     std::shared_ptr<ISensor> gps;
 
 public:
-    RocketFSM(std::shared_ptr<ISensor> imu = nullptr,
-              std::shared_ptr<ISensor> barometer1 = nullptr,
-              std::shared_ptr<ISensor> barometer2 = nullptr,
-              std::shared_ptr<ISensor> gpsModule = nullptr);
+    RocketFSM(std::shared_ptr<ISensor> imu,
+              std::shared_ptr<ISensor> barometer1,
+              std::shared_ptr<ISensor> barometer2,
+              std::shared_ptr<ISensor> accelerometer,
+              std::shared_ptr<ISensor> gpsModule,
+              std::shared_ptr<KalmanFilter1D> kf
+            );
     ~RocketFSM();
 
     // IStateMachine interface
