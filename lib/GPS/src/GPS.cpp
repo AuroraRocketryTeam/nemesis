@@ -1,44 +1,40 @@
 #include "GPS.hpp"
 
-GPS::GPS() {}
+GPS::GPS()
+{
+    this->myGNSS = SFE_UBLOX_GNSS();
+}
 
-bool GPS::init() {
+bool GPS::init()
+{
     Wire.begin();
-    if (!myGNSS.begin(Wire)) {
+    if (!myGNSS.begin(Wire))
+    {
         return false;
     }
-    // Optionally configure GNSS settings here
     return true;
 }
 
-std::optional<SensorData> GPS::getData() {
-    myGNSS.checkUblox();
-
-    // Add debug information
-    int32_t lat = myGNSS.getLatitude();
-    int32_t lon = myGNSS.getLongitude();
+std::optional<SensorData> GPS::getData()
+{
     uint8_t fixType = myGNSS.getFixType();
     uint8_t satellites = myGNSS.getSIV();
+    SensorData data("GPS");
+    data.setData("satellites", satellites);
+    data.setData("fix", fixType);
 
     // Check for valid fix (fix type 2 = 2D, 3 = 3D)
-    if (fixType >= 2 && lat != 0 && lon != 0) {
-        SensorData data("GPS");
-        data.setData("latitude", lat / 10000000.0);
+    if (fixType >= 3)
+    {
+        int32_t lat = myGNSS.getLatitude();
+        int32_t lon = myGNSS.getLongitude();
+        data.setData("latitude", lat / 10000000.0);         // Check correct conversion formula
         data.setData("longitude", lon / 10000000.0);
-        double altitude_ellipsoid = myGNSS.getAltitude() / 1000.0;
+        double altitude_ellipsoid = myGNSS.getAltitude() / 1000.0;      // Check correct conversion formula
         data.setData("altitude", altitude_ellipsoid);
-        // Remove duplicate altitude line
-        data.setData("speed", myGNSS.getGroundSpeed() / 1000.0 * 3.6);
-        data.setData("satellites", satellites);
+        data.setData("speed", myGNSS.getGroundSpeed() / 1000.0 * 3.6);  // Check correct conversion formula
         data.setData("hdop", myGNSS.getHorizontalDOP() / 100.0);
-        data.setData("fixType", fixType);
-
-        return data;
     }
 
-    // For debugging: you might want to log why it failed
-    // Serial.printf("GPS: No fix - Type: %d, Sats: %d, Lat: %d, Lon: %d\n", 
-    //               fixType, satellites, lat, lon);
-
-    return std::nullopt;
+    return data;
 }
