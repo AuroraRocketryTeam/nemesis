@@ -13,9 +13,9 @@ private:
     SemaphoreHandle_t dataMutex;
 
     // Use shared pointers for sensors
-    std::shared_ptr<ISensor> bno055;
-    std::shared_ptr<ISensor> baro1;
-    std::shared_ptr<ISensor> baro2;
+    ISensor *bno055;
+    ISensor *baro1;
+    ISensor *baro2;
 
 public:
     SensorTask(std::shared_ptr<SharedSensorData> sensorData,
