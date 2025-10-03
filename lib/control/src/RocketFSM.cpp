@@ -638,7 +638,7 @@ void RocketFSM::fsmTask()
         checkTransitions();
 
         // Process events from queue
-        if (eventQueue && xQueueReceive(eventQueue, &eventData, pdMS_TO_TICKS(50)) == pdPASS)
+        if (eventQueue && xQueueReceive(eventQueue, &eventData, pdMS_TO_TICKS(20)) == pdPASS)
         {
             if (!isTransitioning)
             {
@@ -646,31 +646,8 @@ void RocketFSM::fsmTask()
             }
         }
 
-        // Periodic status output
-        // if (loopCounter % 20 == 0)
-        // {
-        // LOG_INFO("RocketFSM", "Loop %lu: State=%s, Time in state=%lu ms",
-        //          loopCounter,
-        //          getStateString(currentState),
-        //          millis() - stateStartTime);
-
-        // // Extended debug info for crash analysis
-        // DEBUG_PRINTF("=== EXTENDED DEBUG [Loop %lu] ===\n", loopCounter);
-        // DEBUG_PRINTF("Free heap: %u bytes (min: %u)\n", ESP.getFreeHeap(), ESP.getMinFreeHeap());
-        // DEBUG_PRINTF("Largest free block: %u bytes\n", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-        // DEBUG_PRINTF("Stack high water mark: %u bytes\n", uxTaskGetStackHighWaterMark(NULL));
-        // DEBUG_PRINTF("Queue messages waiting: %u\n", uxQueueMessagesWaiting(eventQueue));
-        // DEBUG_PRINTF("Task count: %u\n", uxTaskGetNumberOfTasks());
-        // DEBUG_PRINTF("Current tick count: %lu\n", xTaskGetTickCount());
-        // DEBUG_PRINTF("Uptime: %lu ms\n", millis());
-        // DEBUG_PRINTF("State transitions: %s -> %s\n",
-        //              getStateString(previousState),
-        //              getStateString(currentState));
-        // DEBUG_PRINTF("================================\n");
-        // }
-
         loopCounter++;
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50)); // 20Hz
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20)); // 50Hz
     }
     esp_task_wdt_delete(NULL);
 
