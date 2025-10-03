@@ -86,25 +86,21 @@ namespace Logger
             Serial.printf("Largest free block: %u bytes\n", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
             Serial.printf("==========================\n\n");
 
-            if(fragmentation > 20.0f)
+            if (fragmentation > 20.0f)
             {
                 Serial.println("[WARNING] High memory fragmentation detected!");
-                Serial.readString(); // Pause for user to read
             }
-            if(freeHeap < 10000)
+            if (freeHeap < 10000)
             {
                 Serial.println("[WARNING] Low free heap memory!");
-                Serial.readString(); // Pause for user to read
             }
-            if(maxAlloc < 5000)
+            if (maxAlloc < 5000)
             {
                 Serial.println("[WARNING] Low maximum allocatable block!");
-                Serial.readString(); // Pause for user to read
             }
-            if(largestBlock < 2000)
+            if (largestBlock < 2000)
             {
                 Serial.println("[WARNING] Very small largest free block!");
-                Serial.readString(); // Pause for user to read
             }
             xSemaphoreGive(serialMutex);
         }
