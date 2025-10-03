@@ -91,21 +91,38 @@ bool TaskManager::startTask(TaskType type, const TaskConfig &config)
 
 void TaskManager::stopTask(TaskType type)
 {
-    auto it = tasks.find(type);
-    if (it != tasks.end() && it->second->isRunning())
+    if (tasks.find(type) == tasks.end())
     {
-        LOG_INFO("TaskManager", "Stopping task: %s", it->second->getName());
-        it->second->stop();
+        LOG_WARNING("TaskManager", "Task type %d not found", static_cast<int>(type));
+        return;
+    }
 
-        // Add delay to ensure FreeRTOS has time to clean up task resources
-        // This is especially important when switching cores
-        vTaskDelay(pdMS_TO_TICKS(50));
+    auto &task = tasks[type];
+    if (task && task->isRunning())
+    {
+        LOG_INFO("TaskManager", "Stopping task: %s", task->getName());
 
-        // Optional: Second verification that task is fully stopped
-        for (int i = 0; i < 5 && it->second->isRunning(); i++)
+        // FIXED: Stop task and wait longer for watchdog cleanup
+        task->stop();
+
+        // Give task time to properly exit and clean up watchdog
+        vTaskDelay(pdMS_TO_TICKS(200)); // Increased from 100ms
+
+        // Verify task actually stopped
+        int attempts = 0;
+        while (task->isRunning() && attempts < 10)
         {
-            LOG_INFO("TaskManager", "Waiting for %s to fully stop...", it->second->getName());
-            vTaskDelay(pdMS_TO_TICKS(10));
+            vTaskDelay(pdMS_TO_TICKS(50));
+            attempts++;
+        }
+
+        if (task->isRunning())
+        {
+            LOG_ERROR("TaskManager", "Task failed to stop after %d attempts", attempts);
+        }
+        else
+        {
+            LOG_INFO("TaskManager", "Task %s stopped safely", task->getName());
         }
     }
 }
@@ -114,50 +131,16 @@ void TaskManager::stopAllTasks()
 {
     LOG_INFO("TaskManager", "Stopping all tasks...");
 
-    // First pass: Request all tasks to stop
     for (auto &[type, task] : tasks)
     {
         if (task && task->isRunning())
         {
-            LOG_INFO("TaskManager", "Stopping task: %s", task->getName());
-            task->stop();
+            stopTask(type);
         }
     }
 
-    // Wait a bit for tasks to finish initial shutdown
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-    // Second pass: Verify all tasks have stopped with extra wait time if needed
-    bool allTasksStopped = false;
-    for (int attempt = 0; attempt < 5 && !allTasksStopped; attempt++)
-    {
-        allTasksStopped = true;
-
-        for (auto &[type, task] : tasks)
-        {
-            if (task && task->isRunning())
-            {
-                allTasksStopped = false;
-                LOG_INFO("TaskManager", "Still waiting for %s to stop (attempt %d)...",
-                         task->getName(), attempt + 1);
-            }
-        }
-
-        if (!allTasksStopped)
-        {
-            // Additional wait time for stubborn tasks
-            vTaskDelay(pdMS_TO_TICKS(50));
-        }
-    }
-
-    // Final verification
-    for (auto &[type, task] : tasks)
-    {
-        if (task && task->isRunning())
-        {
-            LOG_WARNING("TaskManager", "WARNING: %s failed to stop properly", task->getName());
-        }
-    }
+    // ADDED: Extra delay to ensure all watchdog entries are cleaned up
+    vTaskDelay(pdMS_TO_TICKS(300));
 
     LOG_INFO("TaskManager", "All tasks stopped");
 }
