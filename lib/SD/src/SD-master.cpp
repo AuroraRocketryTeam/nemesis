@@ -7,7 +7,7 @@
  */
 bool SD::init()
 {
-    return this->SD.begin(SD_CS, SPI_HALF_SPEED);
+    return this->SD.begin(SD_CS, SPI_FULL_SPEED);
 }
 
 /**
