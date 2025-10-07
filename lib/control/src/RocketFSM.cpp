@@ -661,6 +661,7 @@ void RocketFSM::checkTransitions()
     {
         if (kalmanFilter)
         {
+            // Should I use a mutex here? This is called from the main FSM task and from the EkfTask which runs concurrently. Might be the cause of occasional crashes.
             auto vertical_velocity = kalmanFilter->state()[STATE_INDEX_VELOCITY];
             LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: vertical_velocity=%.3f", vertical_velocity);
             if (vertical_velocity <= 0.0f)
