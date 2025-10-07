@@ -7,11 +7,14 @@ void GpsTask::taskFunction()
     while (running)
     {
         esp_task_wdt_reset(); // Reset watchdog created in BaseTask
+        
+        // Check early for fast exit
+        if (!running) break;
 
         if (gps)
         {
             auto gpsData = gps->getData();
-            if (gpsData)
+            if (gpsData && running) // Check before mutex
             {
                 if (dataMutex && xSemaphoreTake(dataMutex, mutexTimeout) == pdTRUE)
                 {
@@ -41,7 +44,12 @@ void GpsTask::taskFunction()
         }
 
         loopCounter++;
-        vTaskDelay(pdMS_TO_TICKS(200)); // 5 Hz
+        
+        // Split 200ms delay into 20x10ms chunks for faster exit (still 5 Hz)
+        for (int i = 0; i < 20 && running; i++)
+        {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
     }
     LOG_INFO("GpsTask", "Task exiting");
 }

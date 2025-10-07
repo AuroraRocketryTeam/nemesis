@@ -14,6 +14,9 @@ void EkfTask::taskFunction() {
     while (running)
     {
         esp_task_wdt_reset();
+        
+        // Check early exit
+        if (!running) break;
 
         SensorData imuCopy("imu");
         SensorData baro1Copy("baro1");
@@ -38,6 +41,8 @@ void EkfTask::taskFunction() {
             vTaskDelay(pdMS_TO_TICKS(5));
             continue;
         }
+        
+        if (!running) break; // Check after mutex operation
 
         // Safely extract sensor values using optionals and variant checks
         float omega[3] = {0.0f, 0.0f, 0.0f};
@@ -111,6 +116,8 @@ void EkfTask::taskFunction() {
             vTaskDelay(pdMS_TO_TICKS(5));
             continue;
         }
+        
+        if (!running) break; // Check before heavy computation
 
         // Compute elapsed time in seconds. On first run, set a small default dt.
         float elapsed = 0.01f;
@@ -144,9 +151,19 @@ void EkfTask::taskFunction() {
                 LOG_WARNING("EkfTask", "EKF diverged or produced invalid state.");
             }
         }
-
+        LOG_DEBUG("EkfTask", "EKF State: pos=%.2f vel=%.2f q=[%.3f, %.3f, %.3f, %.3f]",
+                  kalmanFilter->state()[0],
+                  kalmanFilter->state()[1],
+                  kalmanFilter->state()[2],
+                  kalmanFilter->state()[3],
+                  kalmanFilter->state()[4],
+                  kalmanFilter->state()[5]);
         lastTimestamp = dataTimeStamp;
 
-        vTaskDelay(pdMS_TO_TICKS(20)); // 50 Hz
+        // Split delay for faster exit response (4x5ms = 20ms total)
+        for (int i = 0; i < 4 && running; i++)
+        {
+            vTaskDelay(pdMS_TO_TICKS(5));
+        }
     }
 }
