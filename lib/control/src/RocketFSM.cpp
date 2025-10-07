@@ -2,6 +2,7 @@
 #include "esp_task_wdt.h"
 #include "esp_heap_caps.h"
 #include <Arduino.h>
+#include <pins.h>
 
 // Event queue size
 static const size_t EVENT_QUEUE_SIZE = 10;
@@ -278,70 +279,85 @@ void RocketFSM::setupStateActions()
                          { LOG_INFO("RocketFSM", "Entering CALIBRATING"); })
         .setExitAction([this]()
                        { LOG_INFO("RocketFSM", "Exiting CALIBRATING"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Calib1", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Calib1", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Calib", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     // READY_FOR_LAUNCH state
     stateActions[RocketState::READY_FOR_LAUNCH] = std::make_unique<StateAction>(RocketState::READY_FOR_LAUNCH);
     stateActions[RocketState::READY_FOR_LAUNCH]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering READY_FOR_LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::GPS, "Gps_Ready", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true));
+    //.addTask(TaskConfig(TaskType::GPS, "Gps_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     // LAUNCH state
     stateActions[RocketState::LAUNCH] = std::make_unique<StateAction>(RocketState::LAUNCH);
     stateActions[RocketState::LAUNCH]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::GPS, "Gps_Launch", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Launch", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     stateActions[RocketState::ACCELERATED_FLIGHT] = std::make_unique<StateAction>(RocketState::ACCELERATED_FLIGHT);
     stateActions[RocketState::ACCELERATED_FLIGHT]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering ACCELERATED_FLIGHT"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::GPS, "Gps_Accel", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Accel", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::BALLISTIC_FLIGHT] = std::make_unique<StateAction>(RocketState::BALLISTIC_FLIGHT);
     stateActions[RocketState::BALLISTIC_FLIGHT]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering BALLISTIC_FLIGHT"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Ballistic", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::APOGEE] = std::make_unique<StateAction>(RocketState::APOGEE);
     stateActions[RocketState::APOGEE]
         ->setEntryAction([this]()
-                         { LOG_INFO("RocketFSM", "Entering APOGEE"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+                         {
+                             LOG_INFO("RocketFSM", "Entering APOGEE");
+                             digitalWrite(DROGUE_ACTUATOR_PIN, HIGH); // Activate drogue deployment
+                             tone(BUZZER_PIN, 1000, 500);             // Sound buzzer at 1kHz for 500ms
+                         })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Apogee", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Apogee", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::STABILIZATION] = std::make_unique<StateAction>(RocketState::STABILIZATION);
     stateActions[RocketState::STABILIZATION]
         ->setEntryAction([this]()
-                         { LOG_INFO("RocketFSM", "Entering STABILIZATION"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+                         {
+                             LOG_INFO("RocketFSM", "Entering STABILIZATION");
+                             digitalWrite(MAIN_ACTUATOR_PIN, HIGH); // Activate main deployment
+                             tone(BUZZER_PIN, 1000, 500);           // Sound buzzer at 1kHz for 500ms
+                         })
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Stabilization", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Stabilization", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::DECELERATION] = std::make_unique<StateAction>(RocketState::DECELERATION);
     stateActions[RocketState::DECELERATION]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering DECELERATION"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Deceleration", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Deceleration", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::LANDING] = std::make_unique<StateAction>(RocketState::LANDING);
     stateActions[RocketState::LANDING]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering LANDING"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Landing", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::GPS, "Gps_Landing", 4096, TaskPriority::TASK_MEDIUM, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Landing", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Landing", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Landing", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     stateActions[RocketState::RECOVERED] = std::make_unique<StateAction>(RocketState::RECOVERED);
     stateActions[RocketState::RECOVERED]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering RECOVERED"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_PostFlight", 4096, TaskPriority::TASK_LOW, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::GPS, "Gps_PostFlight", 4096, TaskPriority::TASK_LOW, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_PostFlight", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_PostFlight", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     LOG_INFO("RocketFSM", "State actions setup complete");
 }
 
@@ -516,88 +532,187 @@ void RocketFSM::processEvent(const FSMEventData &eventData)
 
 void RocketFSM::checkTransitions()
 {
-    // Check for automatic transitions based on conditions
+    // Check for automatic transitions quickly (fast paths first)
     if (transitionManager->checkAutomaticTransitions(currentState, stateStartTime))
     {
-        // Automatic transition was triggered
-        return;
+        return; // automatic transition handled
     }
 
-    // State-specific automatic transition logic
+    // Cache some persistent values across calls to avoid repeated allocations
+    static bool haveAccel = false;
+    static float accelZ = 0.0f;
+    static unsigned long launchHighSince = 0;
+    static unsigned long decelSince = 0;
+
+    // Helper to safely and quickly read accel.z into accelZ. Returns true if a new value was read.
+    auto tryReadAccelZ = [&](unsigned int timeoutMs = 2) -> bool
+    {
+        bool read = false;
+        if (sensorDataMutex)
+        {
+            if (xSemaphoreTake(sensorDataMutex, pdMS_TO_TICKS(timeoutMs)) == pdTRUE)
+            {
+                auto opt = sharedData->imuData.getData("accelerometer");
+                if (opt.has_value() && std::holds_alternative<std::map<std::string, float>>(opt.value()))
+                {
+                    const auto &accelMap = std::get<std::map<std::string, float>>(opt.value());
+                    auto it = accelMap.find("z");
+                    if (it != accelMap.end())
+                    {
+                        accelZ = it->second;
+                        haveAccel = true;
+                        read = true;
+                    }
+                }
+                xSemaphoreGive(sensorDataMutex);
+            }
+        }
+        else
+        {
+            auto opt = sharedData->imuData.getData("accelerometer");
+            if (opt.has_value() && std::holds_alternative<std::map<std::string, float>>(opt.value()))
+            {
+                const auto &accelMap = std::get<std::map<std::string, float>>(opt.value());
+                auto it = accelMap.find("z");
+                if (it != accelMap.end())
+                {
+                    accelZ = it->second;
+                    haveAccel = true;
+                    read = true;
+                }
+            }
+        }
+        return read;
+    };
+
+    // Fast state-based checks
     switch (currentState)
     {
     case RocketState::INACTIVE:
-        // Automatically start calibration
+        // Kick off calibration immediately
         sendEvent(FSMEvent::START_CALIBRATION);
         break;
 
     case RocketState::CALIBRATING:
-        // Check for calibration timeout (example: 10 seconds)
-        if (millis() - stateStartTime > 10000)
+        // Calibration timeout fallback
+        if (millis() - stateStartTime > 10000U)
         {
             sendEvent(FSMEvent::CALIBRATION_COMPLETE);
         }
         break;
 
     case RocketState::READY_FOR_LAUNCH:
-        // Check for launch detection (example: 4 seconds timeout for testing)
-        if (millis() - stateStartTime > 4000)
+        tryReadAccelZ(2);
+        if (haveAccel)
         {
-            sendEvent(FSMEvent::LAUNCH_DETECTED);
+            if (accelZ > LIFTOFF_ACCELERATION_THRESHOLD)
+            {
+                if (launchHighSince == 0)
+                {
+                    launchHighSince = millis();
+                }
+                else if (millis() - launchHighSince > static_cast<unsigned long>(LIFTOFF_TIMEOUT_MS))
+                {
+                    sendEvent(FSMEvent::LAUNCH_DETECTED);
+                    launchHighSince = 0;
+                }
+            }
+            else
+            {
+                launchHighSince = 0;
+            }
         }
         break;
+
     case RocketState::LAUNCH:
-        // Check if accelerated flight has begun (leaving launch pad, wait ... ms, as an example we'll wait 1s)
-        if (millis() - stateStartTime > 1000)
+        // After a short delay consider liftoff started (rocket left the launch pad and is accelerating)
+        if (millis() - stateStartTime > 5000U)
         {
             sendEvent(FSMEvent::LIFTOFF_STARTED);
         }
         break;
+
     case RocketState::ACCELERATED_FLIGHT:
-        // Check if ballistic flight has begun (acceleration becomes <= 0, for now just a timeout of 6s)
-        if (millis() - stateStartTime > 2000)
+        tryReadAccelZ(2);
+        if (haveAccel)
         {
-            sendEvent(FSMEvent::ACCELERATION_COMPLETE);
+            LOG_INFO("RocketFSM", "ACCELERATED_FLIGHT: accelZ=%.3f", accelZ);
+            // Detect sustained deceleration to switch to ballistic
+            if (accelZ <= GRAVITY)
+            {
+                if (decelSince == 0)
+                {
+                    decelSince = millis();
+                }
+                else if (millis() - decelSince > 200U)
+                {
+                    sendEvent(FSMEvent::ACCELERATION_COMPLETE);
+                    decelSince = 0;
+                }
+            }
+            else
+            {
+                decelSince = 0;
+            }
         }
         break;
+
     case RocketState::BALLISTIC_FLIGHT:
-        // Check if apogee has arrived (vertical velocity <= 0, for now just a timeout of 3s)
-        if (millis() - stateStartTime > 3000)
+    {
+        if (kalmanFilter)
         {
-            sendEvent(FSMEvent::APOGEE_REACHED);
+            auto vertical_velocity = kalmanFilter->state()[STATE_INDEX_VELOCITY];
+            LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: vertical_velocity=%.3f", vertical_velocity);
+            if (vertical_velocity <= 0.0f)
+            {
+                sendEvent(FSMEvent::APOGEE_REACHED);
+            }
         }
         break;
+    }
+
     case RocketState::APOGEE:
-        // Delay after drogue chute is opened (wait ... ms, for now 1s for testing)
-        if (millis() - stateStartTime > 1000)
+        if (millis() - stateStartTime > DROGUE_APOGEE_TIMEOUT)
         {
             sendEvent(FSMEvent::DROGUE_READY);
         }
         break;
+
     case RocketState::STABILIZATION:
-        // Check if altitude is < 450m, for now a timeout of 3s for testing
-        if (millis() - stateStartTime > 3000)
+        if (kalmanFilter)
         {
-            sendEvent(FSMEvent::STABILIZATION_COMPLETE);
+            auto altitude = kalmanFilter->state()[STATE_INDEX_ALTITUDE];
+            LOG_INFO("RocketFSM", "STABILIZATION: altitude=%.3f", altitude);
+            if (altitude < MAIN_ALTITUDE_THRESHOLD)
+            {
+                sendEvent(FSMEvent::STABILIZATION_COMPLETE);
+            }
         }
         break;
+
     case RocketState::DECELERATION:
-        // Check for touchdown, for now a timeout of 5s for testing
-        if (millis() - stateStartTime > 5000)
+        if (kalmanFilter)
         {
-            sendEvent(FSMEvent::DECELERATION_COMPLETE);
+            auto vertical_velocity = kalmanFilter->state()[STATE_INDEX_VELOCITY];
+            auto altitude = kalmanFilter->state()[STATE_INDEX_ALTITUDE];
+            LOG_INFO("RocketFSM", "DECELERATION: vertical_velocity=%.3f, altitude=%.3f", vertical_velocity, altitude);
+            if (vertical_velocity < TOUCHDOWN_VELOCITY_THRESHOLD && altitude < TOUCHDOWN_ALTITUDE_THRESHOLD)
+            {
+                sendEvent(FSMEvent::DECELERATION_COMPLETE);
+            }
         }
         break;
+
     case RocketState::LANDING:
-        // Check for user signal, for now a timeout of 3s for testing
-        if (millis() - stateStartTime > 3000)
+        if (millis() - stateStartTime > 2000U)
         {
             sendEvent(FSMEvent::LANDING_COMPLETE);
         }
         break;
+
     case RocketState::RECOVERED:
+        // Nothing to do
         break;
-        // Add more automatic transition logic as needed...
 
     default:
         break;
