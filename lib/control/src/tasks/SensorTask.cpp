@@ -5,8 +5,12 @@ SensorTask::SensorTask(std::shared_ptr<SharedSensorData> sensorData,
                        SemaphoreHandle_t mutex,
                        std::shared_ptr<ISensor> imu,
                        std::shared_ptr<ISensor> barometer1,
-                       std::shared_ptr<ISensor> barometer2)
-    : BaseTask("SensorTask"), sensorData(sensorData), dataMutex(mutex)
+                       std::shared_ptr<ISensor> barometer2,
+                       std::shared_ptr<RocketLogger> rocketLogger, 
+                       SemaphoreHandle_t loggerMutex)
+    : BaseTask("SensorTask"), 
+    sensorData(sensorData), dataMutex(mutex),
+    rocketLogger(rocketLogger), loggerMutex(loggerMutex)
 {
     bno055 = imu.get();
     baro1 = barometer1.get();
@@ -114,6 +118,21 @@ void SensorTask::taskFunction()
                           loopCount, uxTaskGetStackHighWaterMark(NULL), ESP.getFreeHeap(),
                           heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
         }
+
+        // Adding the data to the RocketLogger
+        if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+        {
+            auto timestampData = SensorData("Timestamp");
+            timestampData.setData("timestamp", static_cast<int>(millis()));
+            rocketLogger->logSensorData(timestampData);
+
+            rocketLogger->logSensorData(sensorData.get()->imuData);
+            rocketLogger->logSensorData(sensorData.get()->baroData1);
+            rocketLogger->logSensorData(sensorData.get()->baroData2);
+
+            xSemaphoreGive(loggerMutex);
+        }
+
         loopCount++;
         vTaskDelay(pdMS_TO_TICKS(100));
     }
