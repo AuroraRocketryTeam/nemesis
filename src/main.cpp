@@ -69,8 +69,10 @@ std::shared_ptr<ISensor> accl = nullptr;
 
 std::shared_ptr<SD> sdCard = nullptr;
 
-ILogger *rocketLogger = nullptr;
 std::shared_ptr<KalmanFilter1D> ekf = nullptr;
+
+// Define the RocketLogger
+std::shared_ptr<RocketLogger> rocketLogger = nullptr;
 
 // FSM instance
 std::unique_ptr<RocketFSM> rocketFSM;
@@ -145,13 +147,18 @@ void setup()
     statusManager.setSystemCode(CALIBRATING);
     initializeKalman();
 
+    // Initialize logger
+    LOG_INFO("Init", "Initializing rocket logger...");
+    rocketLogger = std::make_shared<RocketLogger>();
+    LOG_INFO("Init", "✓ Rocket logger initialized");
+
     // Print system information
     printSystemInfo();
 
     // Initialize and start FSM
     LOG_INFO("Main", "=== System initialization complete ===");
     LOG_INFO("Main", "\n=== Initializing Flight State Machine ===");
-    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf);
+    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf, rocketLogger);
     rocketFSM->init();
     statusManager.setSystemCode(FLIGHT_MODE);
 
