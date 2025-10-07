@@ -4,16 +4,16 @@ void GpsTask::taskFunction()
 {
     while (running)
     {
-        esp_task_wdt_reset(); // Reset watchdog created in BaseTask
+        esp_task_wdt_reset();
         if (gps)
         {
             auto gpsData = gps->getData();
             // Write to shared data
-            if (gpsData)
+            if (gpsData.has_value())
             {
                 if (dataMutex && xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
                 {
-                    sensorData->gpsData = *gpsData;
+                    sensorData->gpsData = gpsData.value();
                     LOG_INFO("GpsTask", "Got GPS data");
                     xSemaphoreGive(dataMutex);
                 }
@@ -21,6 +21,18 @@ void GpsTask::taskFunction()
                 {
                     LOG_WARNING("GpsTask", "Failed to take data mutex");
                 }
+                
+                if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    auto timestampData = SensorData("Timestamp");
+                    timestampData.setData("timestamp", static_cast<int>(millis()));
+                    rocketLogger->logSensorData(timestampData);
+                    
+                    rocketLogger->logSensorData("GPS", gpsData.value());
+                    xSemaphoreGive(loggerMutex);
+                } else {
+                    LOG_WARNING("GpsTask", "Failed to take logger mutex");
+                }
+
             }
             else
             {
