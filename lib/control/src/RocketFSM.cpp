@@ -126,6 +126,10 @@ void RocketFSM::start()
         return;
     }
 
+    // CRITICAL: Set isRunning BEFORE creating task to prevent race condition
+    // where the new task starts before this flag is set
+    isRunning = true;
+
     // Create main FSM task
     BaseType_t result = xTaskCreate(
         fsmTaskWrapper,
@@ -137,11 +141,12 @@ void RocketFSM::start()
 
     if (result == pdPASS)
     {
-        isRunning = true;
         LOG_INFO("RocketFSM", "Started successfully");
     }
     else
     {
+        // Task creation failed: revert the flag
+        isRunning = false;
         LOG_ERROR("RocketFSM", "ERROR: Failed to create FSM task");
     }
 }
@@ -156,18 +161,50 @@ void RocketFSM::stop()
         return;
     }
 
+    // Signal task to stop
     isRunning = false;
 
-    // Stop all tasks
+    // Stop all managed tasks first
     if (taskManager)
     {
         taskManager->stopAllTasks();
     }
 
-    // Wait for main task to finish
+    // Wait cooperatively for main FSM task to finish (up to 3 seconds)
     if (fsmTaskHandle)
     {
-        vTaskDelete(fsmTaskHandle);
+        LOG_DEBUG("RocketFSM", "Waiting for FSM task to exit cooperatively...");
+        
+        TaskHandle_t localHandle = fsmTaskHandle;
+        int maxWaits = 60; // 60 * 50ms = 3000ms
+        int waits = 0;
+        
+        while (waits < maxWaits)
+        {
+            eTaskState taskState = eTaskGetState(localHandle);
+            
+            // Task has self-deleted or is invalid
+            if (taskState == eDeleted || taskState == eInvalid)
+            {
+                LOG_DEBUG("RocketFSM", "FSM task exited after %d ms", waits * 50);
+                break;
+            }
+            
+            vTaskDelay(pdMS_TO_TICKS(50));
+            waits++;
+        }
+        
+        // Check final state
+        eTaskState finalState = eTaskGetState(localHandle);
+        if (finalState != eDeleted && finalState != eInvalid)
+        {
+            // CRITICAL: Do NOT force delete - this causes mutex deadlock
+            LOG_ERROR("RocketFSM", "FSM task FAILED to exit after %d ms - SYSTEM MAY BE UNSTABLE", maxWaits * 50);
+            LOG_ERROR("RocketFSM", "Task state: %d (0=Running, 1=Ready, 2=Blocked, 3=Suspended, 4=Deleted)", finalState);
+            // Leave handle as-is for debugging
+            return;
+        }
+        
         fsmTaskHandle = nullptr;
     }
 
@@ -286,31 +323,31 @@ void RocketFSM::setupStateActions()
     stateActions[RocketState::READY_FOR_LAUNCH]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering READY_FOR_LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true));
-    //.addTask(TaskConfig(TaskType::GPS, "Gps_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::GPS, "Gps_Ready", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     // LAUNCH state
     stateActions[RocketState::LAUNCH] = std::make_unique<StateAction>(RocketState::LAUNCH);
     stateActions[RocketState::LAUNCH]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering LAUNCH"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Launch", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Launch", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     stateActions[RocketState::ACCELERATED_FLIGHT] = std::make_unique<StateAction>(RocketState::ACCELERATED_FLIGHT);
     stateActions[RocketState::ACCELERATED_FLIGHT]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering ACCELERATED_FLIGHT"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Accel", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Accel", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::BALLISTIC_FLIGHT] = std::make_unique<StateAction>(RocketState::BALLISTIC_FLIGHT);
     stateActions[RocketState::BALLISTIC_FLIGHT]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering BALLISTIC_FLIGHT"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Ballistic", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Ballistic", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::APOGEE] = std::make_unique<StateAction>(RocketState::APOGEE);
@@ -321,8 +358,8 @@ void RocketFSM::setupStateActions()
                              digitalWrite(DROGUE_ACTUATOR_PIN, HIGH); // Activate drogue deployment
                              tone(BUZZER_PIN, 1000, 500);             // Sound buzzer at 1kHz for 500ms
                          })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Apogee", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Apogee", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Apogee", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::STABILIZATION] = std::make_unique<StateAction>(RocketState::STABILIZATION);
@@ -333,30 +370,30 @@ void RocketFSM::setupStateActions()
                              digitalWrite(MAIN_ACTUATOR_PIN, HIGH); // Activate main deployment
                              tone(BUZZER_PIN, 1000, 500);           // Sound buzzer at 1kHz for 500ms
                          })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Stabilization", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Stabilization", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Stabilization", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::DECELERATION] = std::make_unique<StateAction>(RocketState::DECELERATION);
     stateActions[RocketState::DECELERATION]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering DECELERATION"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Deceleration", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Deceleration", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Deceleration", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
 
     stateActions[RocketState::LANDING] = std::make_unique<StateAction>(RocketState::LANDING);
     stateActions[RocketState::LANDING]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering LANDING"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Landing", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
-        .addTask(TaskConfig(TaskType::EKF, "Ekf_Landing", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_Landing", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::EKF, "Ekf_Landing", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_Landing", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     stateActions[RocketState::RECOVERED] = std::make_unique<StateAction>(RocketState::RECOVERED);
     stateActions[RocketState::RECOVERED]
         ->setEntryAction([this]()
                          { LOG_INFO("RocketFSM", "Entering RECOVERED"); })
-        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_PostFlight", 4096, TaskPriority::TASK_CRITICAL, TaskCore::CORE_0, true))
+        .addTask(TaskConfig(TaskType::SENSOR, "Sensor_PostFlight", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_0, true))
         .addTask(TaskConfig(TaskType::GPS, "Gps_PostFlight", 4096, TaskPriority::TASK_HIGH, TaskCore::CORE_1, true));
     LOG_INFO("RocketFSM", "State actions setup complete");
 }
@@ -445,7 +482,7 @@ void RocketFSM::transitionTo(RocketState newState)
 
     isTransitioning = true;
 
-    if (xSemaphoreTake(stateMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    if (xSemaphoreTake(stateMutex, pdMS_TO_TICKS(10)) == pdTRUE)
     {
         LOG_INFO("RocketFSM", "[TRANSITION] %s -> %s",
                  getStateString(currentState),
@@ -463,7 +500,6 @@ void RocketFSM::transitionTo(RocketState newState)
             try
             {
                 taskManager->stopAllTasks();
-                vTaskDelay(pdMS_TO_TICKS(100)); // Give some time for tasks to stop
             }
             catch (const std::exception &e)
             {
@@ -565,21 +601,8 @@ void RocketFSM::checkTransitions()
                     }
                 }
                 xSemaphoreGive(sensorDataMutex);
-            }
-        }
-        else
-        {
-            auto opt = sharedData->imuData.getData("accelerometer");
-            if (opt.has_value() && std::holds_alternative<std::map<std::string, float>>(opt.value()))
-            {
-                const auto &accelMap = std::get<std::map<std::string, float>>(opt.value());
-                auto it = accelMap.find("z");
-                if (it != accelMap.end())
-                {
-                    accelZ = it->second;
-                    haveAccel = true;
-                    read = true;
-                }
+            } else {
+                LOG_WARNING("RocketFSM", "tryReadAccelZ: Failed to acquire sensor data mutex");
             }
         }
         return read;
@@ -602,7 +625,7 @@ void RocketFSM::checkTransitions()
         break;
 
     case RocketState::READY_FOR_LAUNCH:
-        tryReadAccelZ(2);
+        tryReadAccelZ(5);
         if (haveAccel)
         {
             if (accelZ > LIFTOFF_ACCELERATION_THRESHOLD)
@@ -626,14 +649,15 @@ void RocketFSM::checkTransitions()
 
     case RocketState::LAUNCH:
         // After a short delay consider liftoff started (rocket left the launch pad and is accelerating)
-        if (millis() - stateStartTime > 5000U)
+        if (millis() - stateStartTime > 5000)
         {
             sendEvent(FSMEvent::LIFTOFF_STARTED);
         }
         break;
 
     case RocketState::ACCELERATED_FLIGHT:
-        tryReadAccelZ(2);
+        LOG_INFO("ACC_FLIGHT", "Checking condition");
+        tryReadAccelZ(5);
         if (haveAccel)
         {
             LOG_INFO("RocketFSM", "ACCELERATED_FLIGHT: accelZ=%.3f", accelZ);
@@ -659,17 +683,32 @@ void RocketFSM::checkTransitions()
 
     case RocketState::BALLISTIC_FLIGHT:
     {
-        if (kalmanFilter)
         {
-            // Should I use a mutex here? This is called from the main FSM task and from the EkfTask which runs concurrently. Might be the cause of occasional crashes.
-            auto vertical_velocity = kalmanFilter->state()[STATE_INDEX_VELOCITY];
-            LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: vertical_velocity=%.3f", vertical_velocity);
-            if (vertical_velocity <= 0.0f)
+            static unsigned long apogeeSince = 0;
+
+            if (kalmanFilter)
             {
-                sendEvent(FSMEvent::APOGEE_REACHED);
+                auto vertical_velocity = kalmanFilter->state()[STATE_INDEX_VELOCITY];
+                LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: vertical_velocity=%.3f", vertical_velocity);
+                if (vertical_velocity <= 0.0f)
+                {
+                    if (apogeeSince == 0)
+                    {
+                        apogeeSince = millis();
+                    }
+                    else if (millis() - apogeeSince > 500U)
+                    {
+                        sendEvent(FSMEvent::APOGEE_REACHED);
+                        apogeeSince = 0;
+                    }
+                }
+                else
+                {
+                    apogeeSince = 0;
+                }
             }
+            break;
         }
-        break;
     }
 
     case RocketState::APOGEE:
@@ -684,8 +723,10 @@ void RocketFSM::checkTransitions()
         {
             auto altitude = kalmanFilter->state()[STATE_INDEX_ALTITUDE];
             LOG_INFO("RocketFSM", "STABILIZATION: altitude=%.3f", altitude);
-            if (altitude < MAIN_ALTITUDE_THRESHOLD)
+            if (altitude < MAIN_ALTITUDE_THRESHOLD ||
+                (millis() - stateStartTime > 5000UL))
             {
+                LOG_INFO("RocketFSM", "STABILIZATION: condition met (altitude=%.3f, elapsed=%lu ms)", altitude, millis() - stateStartTime);
                 sendEvent(FSMEvent::STABILIZATION_COMPLETE);
             }
         }

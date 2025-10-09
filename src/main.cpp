@@ -157,7 +157,7 @@ void setup()
 
     // Give system a moment to stabilize
     // delay(1000);
-    //testFSMTransitions(*rocketFSM);
+    // testFSMTransitions(*rocketFSM);
     delay(1000);
     // Start FSM tasks
     statusManager.setSystemCode(FLIGHT_MODE);
@@ -187,8 +187,8 @@ void loop()
 
         if (currentState != lastLoggedState)
         {
-            LOG_INFO("Main", "Current FSM State: %s (Runtime: %lu ms)",
-                     rocketFSM->getStateString(currentState), millis());
+            LOG_INFO("Main", "Current FSM State: %s",
+                     rocketFSM->getStateString(currentState));
             lastLoggedState = currentState;
         }
     }
@@ -605,6 +605,8 @@ void initializeKalman()
     auto accelMean = calculateMean(accelSamples);
     auto magMean = calculateMean(magSamples);
 
+    LOG_DEBUG("EKF", "Accelerometer mean: x=%.3f, y=%.3f, z=%.3f", static_cast<double>(accelMean.x()), static_cast<double>(accelMean.y()), static_cast<double>(accelMean.z()));
+    LOG_DEBUG("EKF", "Magnetometer mean: x=%.3f, y=%.3f, z=%.3f", static_cast<double>(magMean.x()), static_cast<double>(magMean.y()), static_cast<double>(magMean.z()));
     // Initialize Kalman Filter
     LOG_INFO("Init", "Initializing Kalman Filter...");
     ekf = std::make_shared<KalmanFilter1D>(accelMean, magMean);

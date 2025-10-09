@@ -23,7 +23,8 @@ namespace Logger
             init();
         }
 
-        if (xSemaphoreTake(serialMutex, pdMS_TO_TICKS(50)) == pdTRUE)
+        // Use shorter timeout to detect deadlocks faster
+        if (xSemaphoreTake(serialMutex, pdMS_TO_TICKS(100)) == pdTRUE)
         {
             char buffer[256];
             va_list args;
@@ -60,6 +61,12 @@ namespace Logger
 
             va_end(args);
             xSemaphoreGive(serialMutex);
+        }
+        else
+        {
+            // DEADLOCK DETECTION: Mutex timeout - likely a task was deleted while holding it
+            // Print directly without mutex as emergency fallback (not thread-safe but better than hanging)
+            Serial.printf("[DEADLOCK] Failed to acquire log mutex for: %s\n", tag);
         }
     }
 

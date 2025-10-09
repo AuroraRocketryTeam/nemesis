@@ -102,27 +102,21 @@ void TaskManager::stopTask(TaskType type)
     {
         LOG_INFO("TaskManager", "Stopping task: %s", task->getName());
 
-        // FIXED: Stop task and wait longer for watchdog cleanup
+        // Record pre-stop status
+        LOG_DEBUG("TaskManager", "Pre-stop: %s isRunning=%d, StackHWM=%u, FreeHeap=%u",
+                  task->getName(), task->isRunning(), task->getStackHighWaterMark(), ESP.getFreeHeap());
+
+        // Request cooperative stop - BaseTask::stop() now handles waiting
         task->stop();
 
-        // Give task time to properly exit and clean up watchdog
-        vTaskDelay(pdMS_TO_TICKS(200)); // Increased from 100ms
-
-        // Verify task actually stopped
-        int attempts = 0;
-        while (task->isRunning() && attempts < 10)
-        {
-            vTaskDelay(pdMS_TO_TICKS(50));
-            attempts++;
-        }
-
+        // Quick verification
         if (task->isRunning())
         {
-            LOG_ERROR("TaskManager", "Task failed to stop after %d attempts", attempts);
+            LOG_ERROR("TaskManager", "Task %s still running after stop()", task->getName());
         }
         else
         {
-            LOG_INFO("TaskManager", "Task %s stopped safely", task->getName());
+            LOG_INFO("TaskManager", "Task %s stopped - FreeHeap=%u", task->getName(), ESP.getFreeHeap());
         }
     }
 }
@@ -131,18 +125,29 @@ void TaskManager::stopAllTasks()
 {
     LOG_INFO("TaskManager", "Stopping all tasks...");
 
-    for (auto &[type, task] : tasks)
+    // Iterate over a snapshot of task types to avoid iterator invalidation during stops
+    std::vector<TaskType> taskTypes;
+    for (const auto &p : tasks)
+        taskTypes.push_back(p.first);
+
+    for (auto type : taskTypes)
     {
-        if (task && task->isRunning())
+        auto it = tasks.find(type);
+        if (it != tasks.end())
         {
-            stopTask(type);
+            auto &task = it->second;
+            if (task && task->isRunning())
+            {
+                LOG_DEBUG("TaskManager", "About to stop task type %d (%s)", static_cast<int>(type), task->getName());
+                stopTask(type);
+            }
         }
     }
 
-    // ADDED: Extra delay to ensure all watchdog entries are cleaned up
-    vTaskDelay(pdMS_TO_TICKS(300));
+    // Minimal settle delay since BaseTask::stop() already waits
+    vTaskDelay(pdMS_TO_TICKS(50));
 
-    LOG_INFO("TaskManager", "All tasks stopped");
+    LOG_INFO("TaskManager", "All tasks stopped - FreeHeap: %u bytes", ESP.getFreeHeap());
 }
 
 bool TaskManager::isTaskRunning(TaskType type) const

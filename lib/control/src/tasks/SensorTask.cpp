@@ -29,8 +29,8 @@ void SensorTask::setSensors(std::shared_ptr<ISensor> imu,
 
 void SensorTask::onTaskStart()
 {
-    LOG_INFO("Sensor", "Task started with stack: %u bytes\n", config.stackSize);
-    LOG_INFO("Sensor", "Sensors: IMU=%s, Baro1=%s, Baro2=%s\n",
+    LOG_INFO("Sensor", "Task started with stack: %u bytes", config.stackSize);
+    LOG_INFO("Sensor", "Sensors: IMU=%s, Baro1=%s, Baro2=%s",
              bno055 ? "OK" : "NULL",
              baro1 ? "OK" : "NULL",
              baro2 ? "OK" : "NULL");
@@ -49,10 +49,14 @@ void SensorTask::taskFunction()
     {
         // CRITICAL: Reset the watchdog every loop (watchdog created in BaseTask)
         esp_task_wdt_reset();
+        
+        // Check running flag early to exit quickly during shutdown
+        if (!running) break;
+        
         if (bno055)
         {
             auto imuData = bno055->getData();
-            if (imuData)
+            if (imuData && running) // Check before mutex
             {
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
                 {
@@ -66,10 +70,13 @@ void SensorTask::taskFunction()
                 }
             }
         }
+        
+        if (!running) break; // Check between sensors
+        
         if (baro1)
         {
             auto baroData1 = baro1->getData();
-            if (baroData1)
+            if (baroData1 && running)
             {
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
                 {
@@ -83,10 +90,13 @@ void SensorTask::taskFunction()
                 }
             }
         }
+        
+        if (!running) break;
+        
         if (baro2)
         {
             auto baroData2 = baro2->getData();
-            if (baroData2)
+            if (baroData2 && running)
             {
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
                 {
@@ -100,6 +110,9 @@ void SensorTask::taskFunction()
                 }
             }
         }
+        
+        if (!running) break;
+        
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
         {
             sensorData->timestamp = esp_timer_get_time();
@@ -115,6 +128,11 @@ void SensorTask::taskFunction()
                           heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
         }
         loopCount++;
-        vTaskDelay(pdMS_TO_TICKS(100));
+        
+        // Shorter delay to exit faster (split into smaller chunks)
+        for (int i = 0; i < 10 && running; i++)
+        {
+            vTaskDelay(pdMS_TO_TICKS(10)); // 10x10ms = 100ms total, but check every 10ms
+        }
     }
 }
