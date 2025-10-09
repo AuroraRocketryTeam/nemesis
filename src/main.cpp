@@ -48,7 +48,7 @@
  * Useful for fast testing without needing precise sensor reads.
  *
  */
-#define CALIBRATE_SENSORS
+//#define CALIBRATE_SENSORS
 #define ENABLE_PRE_FLIGHT_MODE
 #define TEST_FILE "/test.txt"
 
@@ -90,14 +90,14 @@ void setup()
 {
     // Initialize basic hardware
     Serial.begin(SERIAL_BAUD_RATE);
-
+    
     // Initialize controllers
     ledController.init();
     buzzerController.init();
-
+    
     // Initialize status patterns
     statusManager.init();
-
+    
     // Set initial status with PRE_FLIGHT_MODE
     statusManager.setSystemCode(PRE_FLIGHT_MODE);
 
@@ -130,7 +130,7 @@ void setup()
     initializeComponents();
 
 #ifdef ENABLE_PRE_FLIGHT_MODE
-    delay(10000);
+    delay(10000); // !!! Delete post debugging
     // Start test routine if in test mode
     LOG_INFO("Main", "=== TEST MODE ENABLED ===");
     testRoutine();
@@ -158,7 +158,7 @@ void setup()
     // Initialize and start FSM
     LOG_INFO("Main", "=== System initialization complete ===");
     LOG_INFO("Main", "\n=== Initializing Flight State Machine ===");
-    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf, rocketLogger);
+    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf, sdCard, rocketLogger);
     rocketFSM->init();
     // statusManager.setSystemCode(FLIGHT_MODE);
 
@@ -168,15 +168,18 @@ void setup()
     delay(1000);
     // Start FSM tasks
     statusManager.setSystemCode(FLIGHT_MODE);
+    LOG_INFO("Main", "Starting Flight State Machine...");
     rocketFSM->start();
 
     // Signal successful initialization
     digitalWrite(LED_RED, LOW);
     digitalWrite(LED_GREEN, HIGH);
+    LOG_INFO("Main", "SETUP COMPLETE - SYSTEM IN FLIGHT MODE");
 }
 
 void loop()
 {
+    LOG_INFO("Main", "Entering main loop...");
     // Main loop is kept minimal since everything runs in FreeRTOS tasks
     static unsigned long lastHeartbeat = 0;
     static bool ledState = false;
@@ -184,10 +187,11 @@ void loop()
     // Heartbeat every 2 seconds
     if (millis() - lastHeartbeat > 2000)
     {
+        LOG_INFO("Main", "Last heartbeat at %lu ms - System running", millis());
         lastHeartbeat = millis();
         ledState = !ledState;
         digitalWrite(LED_BUILTIN, ledState);
-
+        
         // Optional: Print current state periodically
         static RocketState lastLoggedState = RocketState::INACTIVE;
         RocketState currentState = rocketFSM->getCurrentState();

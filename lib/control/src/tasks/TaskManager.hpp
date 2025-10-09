@@ -29,7 +29,7 @@ private:
     SemaphoreHandle_t sensorDataMutex;
     SemaphoreHandle_t loggerMutex;
 
-    std::shared_ptr<SD> sdCard;
+    std::shared_ptr<SD> sd;
     
 public:
     TaskManager(std::shared_ptr<SharedSensorData> sensorData,
@@ -38,7 +38,11 @@ public:
             std::shared_ptr<ISensor> barometer1,
             std::shared_ptr<ISensor> barometer2,
             std::shared_ptr<ISensor> gps,
-            SemaphoreHandle_t sensorMutex);
+            SemaphoreHandle_t sensorMutex,
+            std::shared_ptr<SD> sd,
+            std::shared_ptr<RocketLogger> rocketLogger,
+            SemaphoreHandle_t loggerMutex);
+    
     ~TaskManager();
     
     void initializeTasks();

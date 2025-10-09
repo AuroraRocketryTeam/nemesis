@@ -6,14 +6,21 @@ TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
                          std::shared_ptr<ISensor> barometer1,
                          std::shared_ptr<ISensor> barometer2,
                          std::shared_ptr<ISensor> gps,
-                         SemaphoreHandle_t sensorMutex) : sensorData(sensorData), kalmanFilter(kalmanFilter),
-                                                          bno055(imu), baro1(barometer1), baro2(barometer2), gps(gps), sensorDataMutex(sensorMutex)
+                         SemaphoreHandle_t sensorMutex,
+                         std::shared_ptr<SD> sd,
+                         std::shared_ptr<RocketLogger> rocketLogger,
+                         SemaphoreHandle_t loggerMutex) : 
+                            sensorData(sensorData), kalmanFilter(kalmanFilter),
+                            bno055(imu), baro1(barometer1), baro2(barometer2), gps(gps), 
+                            sensorDataMutex(sensorMutex), sd(sd), rocketLogger(rocketLogger),
+                            loggerMutex(loggerMutex)
 {
-    LOG_INFO("TaskMgr", "Initialized with sensors: IMU=%s, Baro1=%s, Baro2=%s, GPS=%s",
+    LOG_INFO("TaskMgr", "Initialized with sensors: IMU=%s, Baro1=%s, Baro2=%s, GPS=%s, SD=%s",
              imu ? "OK" : "NULL",
              barometer1 ? "OK" : "NULL",
              barometer2 ? "OK" : "NULL",
-             gps ? "OK" : "NULL");
+             gps ? "OK" : "NULL",
+             sd ? "OK" : "NULL");
 }
 
 TaskManager::~TaskManager()
@@ -49,13 +56,9 @@ void TaskManager::initializeTasks()
     tasks[TaskType::SD_LOGGING] = std::make_unique<SDLoggingTask>(
         rocketLogger,
         loggerMutex,
-        sdCard);
+        sd);
 
     // tasks[TaskType::TELEMETRY] = std::make_unique<TelemetryTask>(sensorData, sensorDataMutex);
-    // tasks[TaskType::LOGGING] = std::make_unique<LoggingTask>(sensorData, sensorDataMutex);
-    // tasks[TaskType::APOGEE_DETECTION] = std::make_unique<ApogeeDetectionTask>(filteredData, filteredDataMutex);
-    // tasks[TaskType::RECOVERY] = std::make_unique<RecoveryTask>(sharedData.get(), dataMutex);
-    // tasks[TaskType::DATA_COLLECTION] = std::make_unique<DataCollectionTask>(sharedData.get(), dataMutex);
 
     LOG_INFO("TaskManager", "Created %d task instances", tasks.size());
 }

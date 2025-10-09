@@ -52,6 +52,11 @@
 #define MAIN_ALTITUDE_THRESHOLD 450.0f // Altitude threshold for the deployment of the main parachute (in meters)
 #define TOUCHDOWN_VELOCITY_THRESHOLD 2.0f // Vertical velocity threshold for touchdown detection (in m/s)
 #define TOUCHDOWN_ALTITUDE_THRESHOLD 5.0f // Altitude threshold for touchdown detection (in meters)
+
+// In the case of the model velocity is extremely wrong, the access to the parachute is denied, and let to the CatsVega, to avoid the opening of it during ascension
+#define MIN_ACCECTABLE_VELOCITY -1000
+#define MAX_ACCECTABLE_VELOCITY 1000
+
 // Kalman Constants
 #define NUM_CALIBRATION_SAMPLES 200
 #define STD_THRESHOLD 0.1f
