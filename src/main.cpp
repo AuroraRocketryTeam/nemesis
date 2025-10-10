@@ -48,8 +48,8 @@
  * Useful for fast testing without needing precise sensor reads.
  *
  */
-#define CALIBRATE_SENSORS
-#define ENABLE_PRE_FLIGHT_MODE
+// #define CALIBRATE_SENSORS
+// #define ENABLE_PRE_FLIGHT_MODE
 #define TEST_FILE "/test.txt"
 
 // Create controller instances
