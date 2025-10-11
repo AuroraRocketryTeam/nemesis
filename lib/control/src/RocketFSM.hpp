@@ -41,6 +41,7 @@ private:
     std::shared_ptr<ISensor> gps;
     // Rising Flag
     std::shared_ptr<bool> isRising=std::make_shared<bool>(true);
+    std::shared_ptr<float> heightGainSpeed=std::make_shared<float>(0.0f);
 
 public:
     RocketFSM(std::shared_ptr<ISensor> imu,

@@ -2,15 +2,17 @@
 #include <config.h>
 
 TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
-                         std::shared_ptr<KalmanFilter1D> kalmanFilter,
-                         std::shared_ptr<ISensor> imu,
-                         std::shared_ptr<ISensor> barometer1,
-                         std::shared_ptr<ISensor> barometer2,
-                         std::shared_ptr<ISensor> gps,
-                         SemaphoreHandle_t sensorMutex,
-                        std::shared_ptr<bool> isRising) : sensorData(sensorData), kalmanFilter(kalmanFilter),
+                            std::shared_ptr<KalmanFilter1D> kalmanFilter,
+                            std::shared_ptr<ISensor> imu,
+                            std::shared_ptr<ISensor> barometer1,
+                            std::shared_ptr<ISensor> barometer2,
+                            std::shared_ptr<ISensor> gps,
+                            SemaphoreHandle_t sensorMutex,
+                            std::shared_ptr<bool> isRising,
+                            std::shared_ptr<float> heightGainSpeed) : sensorData(sensorData), kalmanFilter(kalmanFilter),
                                                           bno055(imu), baro1(barometer1), baro2(barometer2), 
-                                                          gps(gps), sensorDataMutex(sensorMutex), isRising(isRising)
+                                                          gps(gps), sensorDataMutex(sensorMutex), isRising(isRising),
+                                                          heightGainSpeed(heightGainSpeed)
 {
     LOG_INFO("TaskMgr", "Initialized with sensors: IMU=%s, Baro1=%s, Baro2=%s, GPS=%s",
              imu ? "OK" : "NULL",
@@ -67,7 +69,8 @@ void TaskManager::initializeTasks()
         sensorDataMutex,
         baro1,
         baro2,
-        isRising);
+        isRising,
+        heightGainSpeed);
 
     // tasks[TaskType::LOGGING] = std::make_unique<LoggingTask>(sensorData, sensorDataMutex);
     // tasks[TaskType::APOGEE_DETECTION] = std::make_unique<ApogeeDetectionTask>(filteredData, filteredDataMutex);

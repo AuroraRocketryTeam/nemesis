@@ -122,7 +122,7 @@ void BarometerTask::taskFunction()
             isRising = std::make_shared<bool>(true); // Assume rising until we have enough data
         } else {
             for (size_t i = 0; i < pressureTrendBuffer.size(); ++i) {
-                if (pressureTrendBuffer[i] > max_altitude_read) {
+                if (relAltitude(pressureTrendBuffer[i]) > max_altitude_read) {
                     isRising = std::make_shared<bool>(true);
                 }
             }
@@ -146,6 +146,7 @@ void BarometerTask::taskFunction()
 
 }
 
+// Controls if the last readings indicate that the system is rising or not
 // True if at least one value in the buffer is higher than the previous maximum 
 // This function could be moved to the hpp for cleaner code, but just want to be sure
 // possiamo fare in questo modo o mettere questo codice nel loop qui sopra ed avere una variabile bool privata con una funzione getter

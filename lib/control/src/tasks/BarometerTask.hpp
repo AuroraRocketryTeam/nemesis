@@ -86,13 +86,15 @@ public:
                     SemaphoreHandle_t sensorDataMutex,
                     std::shared_ptr<ISensor> baro1,
                     std::shared_ptr<ISensor> baro2,
-                    std::shared_ptr<bool> isRising)
+                    std::shared_ptr<bool> isRising,
+                    std::shared_ptr<float> heightGainSpeed)
         : BaseTask("BarometerTask"),
           sensorData(sensorData),
           dataMutex(sensorDataMutex),
           baro1(baro1 ? baro1.get() : nullptr),
           baro2(baro2 ? baro2.get() : nullptr),
-          isRising(isRising)
+          isRising(isRising),
+          heightGainSpeed(heightGainSpeed)
     {
         LOG_INFO("BarometerTask", "Initialized with Barometers: %s, %s",
                  baro1 ? "OK" : "NULL",
@@ -105,13 +107,14 @@ public:
     {
         stop();
     }
-
+ 
 private:
     std::shared_ptr<SharedSensorData> sensorData;
     SemaphoreHandle_t dataMutex;
     ISensor *baro1;
     ISensor *baro2;
     std::shared_ptr<bool> isRising;
+    std::shared_ptr<float> heightGainSpeed;
 
     // Maximum altitude reached for easy access in BarometerTask
     static float max_altitude_read;
@@ -133,14 +136,7 @@ private:
         pressureTrendBuffer.push_back(value);
     }
 
-    // Controls if the last readings indicate that the system is rising or not
-    bool isStillRising();
-
     // If max altitude reached is needed to be retrived
     float getMaxAltitudeReached() { return max_altitude_read; }
 
-    /*float checkAltitudeForMainDeployment(){
-        
-
-    }*/
 };
