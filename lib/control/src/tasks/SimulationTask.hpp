@@ -12,15 +12,8 @@
 #include <string>
 #include <chrono>
 
-struct SimulatedDataPoint {
-    double time_s;
-    std::vector<double> values;
-};
-
 class SimulationTask : public BaseTask {
 private:
-    std::vector<SimulatedDataPoint> dataPoints;
-    size_t currentIndex = 0;
     bool started = false;
 
     // Shared static variables for simulation state
@@ -28,6 +21,7 @@ private:
     static std::string csvFilePath;
     static uint32_t filePosition;
     static bool fileInitialized;
+    // Used to calculate the elapsed time from the first task start
     static unsigned long startTime;
     // The first time it'll skip the first line (header)
     static bool firstTime;
