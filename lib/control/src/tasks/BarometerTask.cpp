@@ -129,6 +129,17 @@ void BarometerTask::taskFunction()
             isRising = std::make_shared<bool>(false);
         }
 
+        /*
+        // True se l'ultima lettura del buffer è inferiore alla quota di deploy
+        
+            if (pressureTrendBuffer.empty()){
+                false;
+            } else if(lastAltitude < mainDeploymentAltitude;){
+                //pressureTrendBuffer.back();
+                true;
+            }
+        */
+
         if (filtered_altitude1 > max_altitude_read)
             max_altitude_read = filtered_altitude1;
         if (filtered_altitude2 > max_altitude_read)

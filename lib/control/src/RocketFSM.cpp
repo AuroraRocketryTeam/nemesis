@@ -100,7 +100,8 @@ void RocketFSM::init()
         gps,            // gpsModule
         sensorDataMutex, // sensorMutex
         isRising,       // barometer Rising flag
-        heightGainSpeed // height gain speed in m/s
+        heightGainSpeed, // height gain speed in m/s
+        currentHeight   // height which the rocket is at
     );
     taskManager->initializeTasks();
 

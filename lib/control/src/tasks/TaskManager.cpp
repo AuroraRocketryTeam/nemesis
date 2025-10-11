@@ -9,10 +9,11 @@ TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
                             std::shared_ptr<ISensor> gps,
                             SemaphoreHandle_t sensorMutex,
                             std::shared_ptr<bool> isRising,
-                            std::shared_ptr<float> heightGainSpeed) : sensorData(sensorData), kalmanFilter(kalmanFilter),
+                            std::shared_ptr<float> heightGainSpeed,
+                            std::shared_ptr<float> currentHeight) : sensorData(sensorData), kalmanFilter(kalmanFilter),
                                                           bno055(imu), baro1(barometer1), baro2(barometer2), 
                                                           gps(gps), sensorDataMutex(sensorMutex), isRising(isRising),
-                                                          heightGainSpeed(heightGainSpeed)
+                                                          heightGainSpeed(heightGainSpeed), currentHeight(currentHeight)
 {
     LOG_INFO("TaskMgr", "Initialized with sensors: IMU=%s, Baro1=%s, Baro2=%s, GPS=%s",
              imu ? "OK" : "NULL",
@@ -70,7 +71,8 @@ void TaskManager::initializeTasks()
         baro1,
         baro2,
         isRising,
-        heightGainSpeed);
+        heightGainSpeed,
+        currentHeight);
 
     // tasks[TaskType::LOGGING] = std::make_unique<LoggingTask>(sensorData, sensorDataMutex);
     // tasks[TaskType::APOGEE_DETECTION] = std::make_unique<ApogeeDetectionTask>(filteredData, filteredDataMutex);
