@@ -130,7 +130,7 @@ void setup()
     initializeComponents();
 
 #ifdef ENABLE_PRE_FLIGHT_MODE
-    delay(10000); // !!! Delete post debugging
+    delay(5000); // !!! Delete post debugging
     // Start test routine if in test mode
     LOG_INFO("Main", "=== TEST MODE ENABLED ===");
     testRoutine();
@@ -145,7 +145,7 @@ void setup()
 
     // Initialize kalman
     statusManager.setSystemCode(CALIBRATING);
-    initializeKalman();
+    //initializeKalman();
 
     // Initialize logger
     LOG_INFO("Init", "Initializing rocket logger...");
@@ -179,6 +179,8 @@ void setup()
 
 void loop()
 {
+    auto currentState = rocketFSM->getCurrentState();
+    LOG_INFO("Main", "Current FSM State: %s", rocketFSM->getStateString(currentState));
     LOG_INFO("Main", "Free heap: %u bytes", ESP.getFreeHeap());
     
     static unsigned long lastHeartbeat = 0;
