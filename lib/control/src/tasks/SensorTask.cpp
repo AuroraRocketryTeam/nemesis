@@ -53,7 +53,7 @@ void SensorTask::taskFunction()
     {
         // CRITICAL: Reset the watchdog every loop (watchdog created in BaseTask)
         esp_task_wdt_reset();
-        
+        LOG_INFO("SensorTask", "READING SENSORS");
         // Check running flag early to exit quickly during shutdown
         if (!running) break;
         
@@ -77,43 +77,43 @@ void SensorTask::taskFunction()
         
         if (!running) break; // Check between sensors
         
-        // if (baro1)
-        // {
-        //     auto baroData1 = baro1->getData();
-        //     if (baroData1 && running)
-        //     {
-        //         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-        //         {
-        //             sensorData->baroData1 = *baroData1;
-        //             LOG_DEBUG("Sensor", "Read Baro1 data");
-        //             xSemaphoreGive(dataMutex);
-        //         }
-        //         else
-        //         {
-        //             LOG_WARNING("Sensor", "Failed to take data mutex for Baro1");
-        //         }
-        //     }
-        // }
+        if (baro1)
+        {
+            auto baroData1 = baro1->getData();
+            if (baroData1 && running)
+            {
+                if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+                {
+                    sensorData->baroData1 = *baroData1;
+                    LOG_DEBUG("Sensor", "Read Baro1 data");
+                    LOG_DEBUG("Sensor", "Baro1 pressure: %.2f hPa", std::get<float>(baroData1->getData("pressure").value()));
+                    xSemaphoreGive(dataMutex);
+                }
+                else
+                {
+                    LOG_WARNING("Sensor", "Failed to take data mutex for Baro1");
+                }
+            }
+        }
         
-        // if (!running) break;
-        
-        // if (baro2)
-        // {
-        //     auto baroData2 = baro2->getData();
-        //     if (baroData2 && running)
-        //     {
-        //         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-        //         {
-        //             sensorData->baroData2 = *baroData2;
-        //             LOG_DEBUG("Sensor", "Read Baro2 data");
-        //             xSemaphoreGive(dataMutex);
-        //         }
-        //         else
-        //         {
-        //             LOG_WARNING("Sensor", "Failed to take data mutex for Baro2");
-        //         }
-        //     }
-        // }
+        if (!running) break;
+            if (baro2)
+            {
+            auto baroData2 = baro2->getData();
+                if (baroData2 && running)
+                {
+                    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+                    {
+                        sensorData->baroData2 = *baroData2;
+                        LOG_DEBUG("Sensor", "Read Baro2 data");
+                        xSemaphoreGive(dataMutex);
+                    }
+                    else
+                    {
+                    LOG_WARNING("Sensor", "Failed to take data mutex for Baro2");
+                }
+           }
+        }
         
         if (!running) break;
         
@@ -138,9 +138,8 @@ void SensorTask::taskFunction()
             }
         }
 
-        // Adding the data to the RocketLogger - REDUCED FREQUENCY TO PREVENT MEMORY EXHAUSTION
         // Only log every 50 loops (every ~5 seconds) instead of every loop
-        if (loopCount % 50 == 0 && xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+        if (loopCount % 3 == 0 && xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE)
         {
             auto timestampData = SensorData("Timestamp");
             timestampData.setData("timestamp", static_cast<int>(millis()));
@@ -164,9 +163,6 @@ void SensorTask::taskFunction()
         loopCount++;
         
         // Shorter delay to exit faster (split into smaller chunks)
-        for (int i = 0; i < 10 && running; i++)
-        {
-            vTaskDelay(pdMS_TO_TICKS(10)); // 10x10ms = 100ms total, but check every 10ms
-        }
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }

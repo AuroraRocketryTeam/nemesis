@@ -43,7 +43,7 @@
 // #define TRANSMITTER_CONFIG_MODE_ENABLE // Enable configuration mode for the transmitter (needs to be tested on new hardware)
 
 // Number of log entries to batch before writing to SD card
-#define BATCH_SIZE 10
+#define BATCH_SIZE 30
 
 // Maximum log entries before forcing a clear (emergency protection)
 #define MAX_LOG_ENTRIES 20

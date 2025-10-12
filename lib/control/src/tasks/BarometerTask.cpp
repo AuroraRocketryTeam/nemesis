@@ -22,6 +22,7 @@ float relAltitude(float pressure, float pressureRef = 99323.79032f,
 
 void BarometerTask::taskFunction()
 {
+    LOG_INFO("BarometerTask", "ENTERING THE TASK FUNCTION");
     float altitude1, altitude2;
     float pressure1, pressure2;
 
@@ -36,12 +37,22 @@ void BarometerTask::taskFunction()
     while (running)
     {
         esp_task_wdt_reset();
-
+        
+        if(!running) break;
         // Read raw data from barometers
-        auto presOpt1 = sensorData->baroData1.getData("pressure");
-        auto presVal1 = std::get<float>(presOpt1.value());
-        auto presOpt2 = sensorData->baroData2.getData("pressure");
-        auto presVal2 = std::get<float>(presOpt2.value());
+        //if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+        //{
+            auto presOpt1 = sensorData->baroData1.getData("pressure");
+            pressure1 = std::get<float>(presOpt1.value());
+            auto presOpt2 = sensorData->baroData2.getData("pressure");
+            pressure2 = std::get<float>(presOpt2.value());
+
+        //    xSemaphoreGive(dataMutex);
+        //}
+        //else
+        //{
+        //    LOG_ERROR("BarometerTask", "Failed to take sensor data mutex");
+        //}        
 
         // Apply filters and compute altitudes
         filtered_pressure1 = pressureFilter1.update(pressure1);
@@ -56,6 +67,10 @@ void BarometerTask::taskFunction()
         filtered_altitude1 = relAltitude(filtered_pressure1);  // Filtered altitude
         altitude2 = relAltitude(pressure2);              // Raw altitude
         filtered_altitude2 = relAltitude(filtered_pressure2);  // Filtered altitude
+        
+        // Log of all the pressure data
+        //LOG_INFO("BarometerTask", "Pressures (raw→filtered): Baro1=%.2f→%.2f hPa, Baro2=%.2f→%.2f hPa",
+        //         pressure1, filtered_pressure1, pressure2, filtered_pressure2);
 
         // Da confermare se questa operazione è da fare in questo punto del ciclo
         if (pressureTrendBuffer.size() < trendBufferSize){
@@ -86,7 +101,7 @@ void BarometerTask::taskFunction()
         LOG_INFO("BarometerTask", "Altitudes (raw→filtered): Baro1=%.2f→%.2f m, Baro2=%.2f→%.2f m, Max=%.2f m",
                  altitude1, filtered_altitude1, altitude2, filtered_altitude2, max_altitude_read);
         */
-        vTaskDelay(pdMS_TO_TICKS(5)); // 200Hz
+        vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz
     }
 
 }

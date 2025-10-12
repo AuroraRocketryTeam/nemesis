@@ -114,6 +114,7 @@ json TelemetryTask::collectSensorData()
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) != pdTRUE)
     {
         LOG_WARNING("Telemetry", "Failed to acquire data mutex");
+        xSemaphoreGive(dataMutex);
         return data;
     }
     
