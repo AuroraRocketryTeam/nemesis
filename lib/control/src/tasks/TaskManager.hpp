@@ -39,6 +39,9 @@ private:
     // Telemetry
     std::shared_ptr<EspNowTransmitter> espNowTransmitter;
     
+    // Telemetry
+    std::shared_ptr<EspNowTransmitter> espNowTransmitter;
+    
 public:
     TaskManager(std::shared_ptr<SharedSensorData> sensorData,
             std::shared_ptr<KalmanFilter1D> kalmanFilter,
