@@ -3,7 +3,6 @@
 #include <config.h>
 
 TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
-                            std::shared_ptr<KalmanFilter1D> kalmanFilter,
                             std::shared_ptr<ISensor> imu,
                             std::shared_ptr<ISensor> barometer1,
                             std::shared_ptr<ISensor> barometer2,

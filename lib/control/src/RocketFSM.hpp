@@ -5,7 +5,6 @@
 #include "states/StateAction.hpp"
 #include "states/TransitionManager.hpp"
 #include <SharedData.hpp>
-#include <KalmanFilter1D.hpp>
 #include <Logger.hpp>
 #include "RocketLogger.hpp"
 #include "config.h"
@@ -35,7 +34,6 @@ private:
 
     // Shared data
     std::shared_ptr<SharedSensorData> sharedData;
-    std::shared_ptr<KalmanFilter1D> kalmanFilter;
     std::shared_ptr<RocketLogger> logger;
     SemaphoreHandle_t sensorDataMutex;
     SemaphoreHandle_t loggerMutex;
@@ -63,7 +61,6 @@ public:
               std::shared_ptr<ISensor> barometer2,
               std::shared_ptr<ISensor> accelerometer,
               std::shared_ptr<ISensor> gpsModule,
-              std::shared_ptr<KalmanFilter1D> kf,
               std::shared_ptr<SD> sd,
               std::shared_ptr<RocketLogger> logger
             );

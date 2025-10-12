@@ -12,7 +12,6 @@ RocketFSM::RocketFSM(std::shared_ptr<ISensor> imu,
                      std::shared_ptr<ISensor> barometer2,
                      std::shared_ptr<ISensor> accelerometer,
                      std::shared_ptr<ISensor> gpsModule,
-                     std::shared_ptr<KalmanFilter1D> kf,
                      std::shared_ptr<SD> sd,
                     std::shared_ptr<RocketLogger> logger)
     : fsmTaskHandle(nullptr), eventQueue(nullptr), stateMutex(nullptr),
