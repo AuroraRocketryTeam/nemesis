@@ -1,4 +1,4 @@
-// SimulationTask implementation
+// SimulationTask implementation - Line-based tracking
 #include "SimulationTask.hpp"
 #include <sstream>
 #include <algorithm>
@@ -7,33 +7,44 @@ bool SimulationTask::firstTime = true;
 unsigned long SimulationTask::startTime = millis();
 SD SimulationTask::sdManager;
 std::string SimulationTask::csvFilePath;
+uint32_t SimulationTask::filePosition = 0;  // Track current line number
+bool SimulationTask::fileInitialized = false;
 
 SimulationTask::SimulationTask(const std::string& csvFilePathPar,
-                                                             std::shared_ptr<SharedSensorData> sensorData,
-                                                             SemaphoreHandle_t mutex,
-                                                             std::shared_ptr<RocketLogger> rocketLogger,
-                                                             SemaphoreHandle_t loggerMutex)
+                                std::shared_ptr<SharedSensorData> sensorData,
+                                SemaphoreHandle_t mutex,
+                                std::shared_ptr<RocketLogger> rocketLogger,
+                                SemaphoreHandle_t loggerMutex)
         : BaseTask("SimulationTask"), sensorData(sensorData),
             dataMutex(mutex), rocketLogger(rocketLogger), loggerMutex(loggerMutex) {
-    csvFilePath = csvFilePathPar;
-    firstTime = true;
-    LOG_INFO("SimulationTask", "Opening CSV file: %s", csvFilePath.c_str());
-    // Initialize SD card and open file
-    if (!sdManager.init()) {
-        LOG_ERROR("SimulationTask", "Failed to initialize SD card");
-        return;
+    
+    // Only initialize SD and open file once for all instances
+    if (!fileInitialized) {
+        csvFilePath = csvFilePathPar;
+        firstTime = true;
+        filePosition = 0;
+        
+        LOG_INFO("SimulationTask", "Opening CSV file: %s", csvFilePath.c_str());
+        
+        if (!sdManager.init()) {
+            LOG_ERROR("SimulationTask", "Failed to initialize SD card");
+            return;
+        }
+        if (!sdManager.fileExists(csvFilePath)) {
+            LOG_ERROR("SimulationTask", "CSV file does not exist: %s", csvFilePath.c_str());
+            return;
+        }
+        if (!sdManager.openFile(csvFilePath)) {
+            LOG_ERROR("SimulationTask", "Failed to open CSV file: %s", csvFilePath.c_str());
+            return;
+        }
+        
+        fileInitialized = true;
+        LOG_INFO("SimulationTask", "Successfully opened CSV file");
+    } else {
+        LOG_INFO("SimulationTask", "Reusing already opened CSV file at line %u", filePosition);
     }
-    if (!sdManager.fileExists(csvFilePath)) {
-        LOG_ERROR("SimulationTask", "CSV file does not exist: %s", csvFilePath.c_str());
-        return;
-    }
-    if (!sdManager.openFile(csvFilePath)) {
-        LOG_ERROR("SimulationTask", "Failed to open CSV file: %s", csvFilePath.c_str());
-        return;
-    }
-    LOG_INFO("SimulationTask", "Successfully opened CSV file");
 }
-
 
 SimulationTask::~SimulationTask() {
     // Do not close file here, keep it open for all instances
@@ -43,12 +54,40 @@ void SimulationTask::onTaskStart() {
     if (firstTime) {
         startTime = millis();
     }
+    
+    // If resuming from a previous position, skip to the correct line
+    if (filePosition > 0) {
+        LOG_INFO("SimulationTask", "Seeking to line number: %u", filePosition);
+        // Rewind file to start
+        sdManager.closeFile();
+        sdManager.openFile(csvFilePath);
+        
+        // Skip header
+        sdManager.readLine();
+        
+        // Skip lines until we reach filePosition
+        for (uint32_t i = 1; i < filePosition; i++) {
+            sdManager.readLine();
+        }
+        LOG_INFO("SimulationTask", "Resumed at line %u", filePosition);
+    }
 }
 
 void SimulationTask::onTaskStop() {
+    // Save current line number when stopping
+    LOG_INFO("SimulationTask", "Saved line number: %u", filePosition);
 }
 
 void SimulationTask::reset() {
+    // Reset simulation to beginning
+    filePosition = 0;
+    firstTime = true;
+    startTime = millis();
+    if (fileInitialized) {
+        sdManager.closeFile();
+        sdManager.openFile(csvFilePath);
+        LOG_INFO("SimulationTask", "Reset simulation to beginning");
+    }
 }
 
 // Helper function to trim whitespace and newlines from string
@@ -78,6 +117,7 @@ void SimulationTask::taskFunction() {
             if (firstTime) {
                 String header = sdManager.readLine(); // skip header
                 firstTime = false;
+                filePosition = 1; // After header, we're at line 1
             }
             
             String line = sdManager.readLine();
@@ -86,13 +126,15 @@ void SimulationTask::taskFunction() {
             std::string lineStr = trimString(std::string(line.c_str()));
             
             if (lineStr.length() > 0) {
+                filePosition++; // Increment line counter
+                
                 std::stringstream ss(lineStr);
                 std::string cell;
                 
                 // Read time
                 std::getline(ss, cell, ',');
                 double time_s = std::stod(trimString(cell));
-                LOG_INFO("SimulationTask", "READ TIME: %.2f", time_s);
+                LOG_INFO("SimulationTask", "READ TIME: %.2f (Line %u)", time_s, filePosition);
 
                 // Parse CSV columns into variables
                 double AccBodyX_ms2, AccBodyY_ms2, AccBodyZ_ms2;
@@ -195,6 +237,7 @@ void SimulationTask::taskFunction() {
 
                     xSemaphoreGive(dataMutex);
                 }
+                
                 // Log of all the read data
                 LOG_INFO("SimulationTask", 
                     "Time: %.2f s | AccBody: [%.2f, %.2f, %.2f] m/s² Mag: %.2f | AccSensor: [%.2f, %.2f, %.2f] m/s² | "
@@ -222,5 +265,4 @@ void SimulationTask::taskFunction() {
             vTaskDelay(pdMS_TO_TICKS(1000)); // Add delay to prevent tight error loop
         }
     }
-    
 }
