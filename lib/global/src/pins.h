@@ -41,3 +41,5 @@
 
 #define GPS_LED D6
 
+#define ARMING_PIN D6
+

@@ -40,7 +40,6 @@
 #include <StatusManager.hpp>
 
 // Main system
-#include <KalmanFilter1D.hpp>
 #include <RocketFSM.hpp>
 
 /**
@@ -69,8 +68,6 @@ std::shared_ptr<ISensor> accl = nullptr;
 
 std::shared_ptr<SD> sdCard = nullptr;
 
-std::shared_ptr<KalmanFilter1D> ekf = nullptr;
-
 // Define the RocketLogger
 std::shared_ptr<RocketLogger> rocketLogger = nullptr;
 
@@ -81,8 +78,8 @@ std::unique_ptr<RocketFSM> rocketFSM;
 void testFSMTransitions(RocketFSM &fsm);
 void initializeComponents();
 void sensorsCalibration();
+void gpsFix();
 void printSystemInfo();
-void monitorTasks();
 void testRoutine();
 
 void setup()
@@ -99,7 +96,7 @@ void setup()
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
     pinMode(LED_BUILTIN, OUTPUT);
-    
+
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_BUILTIN, LOW);
 
@@ -108,6 +105,7 @@ void setup()
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(ARMING_PIN, INPUT);
     // Signal initialization start
     digitalWrite(LED_RED, HIGH);
 
@@ -116,14 +114,14 @@ void setup()
 
     // Initialize basic hardware
     Serial.begin(SERIAL_BAUD_RATE);
-    
+
     // Initialize controllers
     ledController.init();
     buzzerController.init();
-    
+
     // Initialize status patterns
     statusManager.init();
-    
+
     // Set initial status with PRE_FLIGHT_MODE
     statusManager.setSystemCode(PRE_FLIGHT_MODE);
 
@@ -138,7 +136,7 @@ void setup()
     initializeComponents();
 
 #ifdef ENABLE_PRE_FLIGHT_MODE
-    delay(5000); // !!! Delete post debugging
+    delay(5000);
     // Start test routine if in test mode
     LOG_INFO("Main", "=== TEST MODE ENABLED ===");
     testRoutine();
@@ -151,8 +149,8 @@ void setup()
     statusManager.setSystemCode(SYSTEM_OK);
 #endif
 
-    // Initialize kalman
-    statusManager.setSystemCode(CALIBRATING);
+    // Fix GPS before flight
+    // gpsFix();
 
     // Initialize logger
     LOG_INFO("Init", "Initializing rocket logger...");
@@ -165,7 +163,7 @@ void setup()
     // Initialize and start FSM
     LOG_INFO("Main", "=== System initialization complete ===");
     LOG_INFO("Main", "\n=== Initializing Flight State Machine ===");
-    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf, sdCard, rocketLogger);
+    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, sdCard, rocketLogger);
     rocketFSM->init();
     // statusManager.setSystemCode(FLIGHT_MODE);
 
@@ -173,10 +171,21 @@ void setup()
     // delay(1000);
     // testFSMTransitions(*rocketFSM);
     delay(1000);
+
+    // Read arming pin before starting FSM
+
     // Start FSM tasks
-    statusManager.setSystemCode(FLIGHT_MODE);
+    statusManager.setSystemCode(PRE_FLIGHT_MODE);
+    while (digitalRead(ARMING_PIN) == LOW)
+    {
+        LOG_WARNING("Main", "System not armed! Waiting for arming signal on pin %d...", ARMING_PIN);
+        delay(1000);
+    }
     LOG_INFO("Main", "Starting Flight State Machine...");
+    statusManager.setSystemCode(FSM_STARTED);
+    delay(1000);
     rocketFSM->start();
+    statusManager.setSystemCode(FLIGHT_MODE);
 
     // Signal successful initialization
     digitalWrite(LED_RED, LOW);
@@ -189,7 +198,7 @@ void loop()
     auto currentState = rocketFSM->getCurrentState();
     LOG_INFO("Main", "Current FSM State: %s", rocketFSM->getStateString(currentState));
     LOG_INFO("Main", "Free heap: %u bytes", ESP.getFreeHeap());
-    
+
     static unsigned long lastHeartbeat = 0;
     static bool ledState = false;
 
@@ -200,18 +209,20 @@ void loop()
         lastHeartbeat = millis();
         ledState = !ledState;
         digitalWrite(LED_BUILTIN, ledState);
-        
+
         // Monitor RocketLogger memory usage
-        if (rocketLogger) {
+        if (rocketLogger)
+        {
             int logCount = rocketLogger->getLogCount();
             LOG_INFO("Main", "RocketLogger entries: %d", logCount);
-            
+
             // If log count is high, warn about memory usage
-            if (logCount > 800) {
+            if (logCount > 800)
+            {
                 LOG_WARNING("Main", "RocketLogger approaching memory limit (%d entries)", logCount);
             }
         }
-        
+
         // Optional: Print current state periodically
         static RocketState lastLoggedState = RocketState::INACTIVE;
         RocketState currentState = rocketFSM->getCurrentState();
@@ -540,6 +551,116 @@ void sensorsCalibration()
 
     LOG_INFO("Calibration", "Sensor calibration complete.");
     statusManager.setSystemCode(SYSTEM_OK);
+}
+
+void gpsFix()
+{
+    if (gps)
+    {
+        LOG_INFO("GPS", "Checking GPS lock...");
+
+        bool gpsLocked = false;
+        unsigned long startTime = millis();
+
+        while (!gpsLocked && (millis() - startTime < GPS_FIX_TIMEOUT_MS))
+        {
+            auto gpsDataOpt = gps->getData();
+            if (gpsDataOpt.has_value())
+            {
+                LOG_INFO("GPS", "Getting GPS data...");
+                auto gpsData = gpsDataOpt.value();
+                auto fix_opt = gpsData.getData("fix");
+                auto satellites_opt = gpsData.getData("satellites");
+                if (fix_opt.has_value())
+                {
+                    uint8_t fix = std::get<uint8_t>(fix_opt.value());
+                    LOG_INFO("GPS", "Fix value: %d", fix);
+                    if (fix >= GPS_MIN_FIX)
+                    {
+                        gpsLocked = true;
+                        LOG_INFO("GPS", "GPS lock acquired. Satellites: %d", std::get<uint8_t>(satellites_opt.value()));
+                    }
+                }
+            }
+            delay(GPS_FIX_LOOKUP_INTERVAL_MS);
+        }
+
+        if (!gpsLocked)
+        {
+            LOG_ERROR("GPS", "GPS lock not acquired within timeout period.");
+            statusManager.setSystemCode(SystemCode::GPS_NO_SIGNAL);
+            // Prompt user for action: RETRY or OVERRIDE
+            LOG_INFO("GPS", "Enter 'RETRY' to attempt GPS fix again or 'OVERRIDE' to continue without GPS.");
+            Serial.println("Type RETRY to retry GPS fix, or OVERRIDE to proceed without GPS.");
+
+            while (true)
+            {
+                if (Serial.available())
+                {
+                    String cmd = Serial.readStringUntil('\n');
+                    cmd.trim();
+                    cmd.toUpperCase();
+
+                    if (cmd == "RETRY")
+                    {
+                        LOG_INFO("GPS", "User requested RETRY. Re-attempting GPS fix...");
+                        statusManager.setSystemCode(CALIBRATING);
+
+                        bool gpsLocked = false;
+                        unsigned long startTime = millis();
+
+                        while (!gpsLocked && (millis() - startTime < GPS_FIX_TIMEOUT_MS))
+                        {
+                            auto gpsDataOpt = gps->getData();
+                            if (gpsDataOpt.has_value())
+                            {
+                                LOG_INFO("GPS", "Getting GPS data...");
+                                auto gpsData = gpsDataOpt.value();
+                                auto fix_opt = gpsData.getData("fix");
+                                auto satellites_opt = gpsData.getData("satellites");
+                                if (fix_opt.has_value())
+                                {
+                                    uint8_t fix = std::get<uint8_t>(fix_opt.value());
+                                    LOG_INFO("GPS", "Fix value: %d", fix);
+                                    if (fix >= GPS_MIN_FIX)
+                                    {
+                                        gpsLocked = true;
+                                        LOG_INFO("GPS", "GPS lock acquired. Satellites: %d", std::get<uint8_t>(satellites_opt.value()));
+                                    }
+                                }
+                            }
+                            vTaskDelay(pdMS_TO_TICKS(GPS_FIX_LOOKUP_INTERVAL_MS));
+                        }
+
+                        if (gpsLocked)
+                        {
+                            statusManager.setSystemCode(SYSTEM_OK);
+                            LOG_INFO("GPS", "GPS fix successful after retry. Continuing execution.");
+                            return;
+                        }
+                        else
+                        {
+                            LOG_ERROR("GPS", "GPS lock not acquired within timeout on retry.");
+                            statusManager.setSystemCode(SystemCode::GPS_NO_SIGNAL);
+                            // Loop back to wait for user command again
+                            Serial.println("GPS retry failed. Type RETRY to try again or OVERRIDE to continue without GPS.");
+                        }
+                    }
+                    else if (cmd == "OVERRIDE")
+                    {
+                        LOG_WARNING("GPS", "User chose to OVERRIDE GPS lock. Continuing without GPS.");
+                        statusManager.setSystemCode(SystemCode::GPS_NO_SIGNAL);
+                        return;
+                    }
+                    else
+                    {
+                        LOG_INFO("GPS", "Unrecognized input. Type RETRY or OVERRIDE.");
+                    }
+                }
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+        }
+    }
 }
 
 // Utility function to calculate mean sensor readings
