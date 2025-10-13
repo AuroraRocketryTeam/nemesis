@@ -80,6 +80,7 @@ void initializeComponents();
 void GPSfix();
 void printSystemInfo();
 void testRoutine();
+void gpsFix();
 
 void setup()
 {
@@ -927,6 +928,61 @@ void testRoutine()
             LOG_INFO("Test", "Test completato con successo!");
             // Show success pattern before returning to menu
             statusManager.playBlockingPattern(TEST_SUCCESS, 1000);
+        }
+    }
+}
+
+void gpsFix()
+{
+    if (gps)
+    {
+        LOG_INFO("GPS", "Checking GPS lock...");
+        bool gpsLocked = false;
+        unsigned long startTime = millis();
+
+        while (!gpsLocked && (millis() - startTime < GPS_FIX_TIMEOUT_MS))
+        {
+            auto gpsDataOpt = gps->getData();
+            if (gpsDataOpt.has_value())
+            {
+                LOG_INFO("GPS", "Getting GPS data...");
+                auto gpsData = gpsDataOpt.value();
+                auto fix_opt = gpsData.getData("fix");
+                auto satellites_opt = gpsData.getData("satellites");
+                if (fix_opt.has_value())
+                {
+                    uint8_t fix = std::get<uint8_t>(fix_opt.value());
+                    LOG_INFO("GPS", "Fix value: %d", fix);
+                    if (fix >= GPS_MIN_FIX)
+                    {
+                        gpsLocked = true;
+                        LOG_INFO("GPS", "GPS lock acquired. Satellites: %d", std::get<uint8_t>(satellites_opt.value()));
+                    }
+                }
+            }
+            delay(GPS_FIX_LOOKUP_INTERVAL_MS);
+        }
+
+        if (!gpsLocked)
+        {
+            LOG_ERROR("GPS", "GPS lock not acquired within timeout period.");
+            statusManager.setSystemCode(SystemCode::GPS_NO_SIGNAL);
+            while(true) {
+                // Read OVERRIDE from Serial
+                if (Serial.available()) {
+                    String input = Serial.readStringUntil('\n');
+                    input.trim();
+                    input.toUpperCase();
+                    Serial.println("Type OVERRIDE to bypass GPS lock and continue.");
+                    if (input == "OVERRIDE") {
+                        LOG_WARNING("GPS", "GPS lock override received. Continuing without GPS.");
+                        statusManager.setSystemCode(SYSTEM_OK);
+                        break;
+                    } else {
+                        LOG_INFO("GPS", "Invalid input. Type OVERRIDE to bypass GPS lock.");
+                    }
+                }
+            }
         }
     }
 }

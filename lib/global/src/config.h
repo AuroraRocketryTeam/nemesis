@@ -60,7 +60,7 @@
 // Replace with your actual receiver MAC address
 #define ESPNOW_PEER_MAC { 0x34, 0xCD, 0xB0, 0x3C, 0x54, 0xB4 }
 #define ESPNOW_CHANNEL 1 // WiFi channel (1-13)
-#define TELEMETRY_INTERVAL_MS 700
+#define TELEMETRY_INTERVAL_MS 500
 #define TOUCHDOWN_ALTITUDE_THRESHOLD 5.0f // Altitude threshold for touchdown detection (in meters)
 
 // In the case of the model velocity is extremely wrong, the access to the parachute is denied, and let to the CatsVega, to avoid the opening of it during ascension

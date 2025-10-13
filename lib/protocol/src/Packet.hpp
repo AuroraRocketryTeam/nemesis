@@ -3,8 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 
-// Fixed packet size for transmission (always 250 bytes on the wire)
-constexpr size_t FIXED_PACKET_SIZE = 250;
+// Fixed packet size for transmission (optimized for 64-byte TelemetryPacket)
+// 70 bytes = Header(7) + Payload(57) + CRC(2) + Padding(4) = 3x faster than 250 bytes
+constexpr size_t FIXED_PACKET_SIZE = 70;
 // Maximum raw packet size we assume for transmit buffers (including header and CRC)
 constexpr size_t MAX_PACKET_SIZE = FIXED_PACKET_SIZE;
 constexpr size_t RESERVED_BYTES = 0;
@@ -51,7 +52,7 @@ struct PacketHeader
 
 constexpr size_t HEADER_SIZE = sizeof(PacketHeader);
 constexpr size_t LORA_MAX_PAYLOAD_SIZE =
-    MAX_TX_PACKET_SIZE - HEADER_SIZE - CRC_SIZE;
+    MAX_TX_PACKET_SIZE - HEADER_SIZE - CRC_SIZE - 4;
 
 /**
  * @brief The payload of a packet. This is a fixed-size buffer equal to the
@@ -81,7 +82,6 @@ struct Packet
      * @brief Calculate the CRC16 of the packet. This writes into `crc`.
      */
     void calculateCRC();
-
     /**
      * @brief Print a human-readable representation of the packet to Serial.
      *
