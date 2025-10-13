@@ -7,15 +7,49 @@
 #include <Packet.hpp>
 #include <PacketManager.hpp>
 #include <memory>
-#include <nlohmann/json.hpp>
+#include <cstdint>
 
-using json = nlohmann::json;
+/**
+ * @brief Binary telemetry packet structure for efficient transmission.
+ * 
+ * This structure is tightly packed (no padding) for efficient transmission
+ * over ESP-NOW. Total size is approximately 64 bytes.
+ * 
+ * All multi-byte values are little-endian (ESP32 native).
+ */
+#pragma pack(push, 1)
+struct TelemetryPacket {
+    uint32_t timestamp;     ///< Milliseconds since boot
+    bool dataValid;         ///< True if sensor data was successfully collected
+    
+    struct {
+        float accel_x, accel_y, accel_z;  ///< Accelerometer (m/s²)
+        float gyro_x, gyro_y, gyro_z;     ///< Gyroscope (rad/s)
+    } imu;
+    
+    struct {
+        float pressure;     ///< Pressure (hPa)
+        float temperature;  ///< Temperature (°C)
+    } baro1;
+    
+    struct {
+        float pressure;     ///< Pressure (hPa)
+        float temperature;  ///< Temperature (°C)
+    } baro2;
+    
+    struct {
+        float latitude;     ///< Latitude (degrees)
+        float longitude;    ///< Longitude (degrees)
+        float altitude;     ///< GPS altitude (meters)
+    } gps;
+};
+#pragma pack(pop)
 
 /**
  * @brief Task that periodically collects sensor data and transmits it via ESP-NOW.
  * 
- * This task reads from SharedSensorData, serializes it to JSON, divides it into
- * Packet chunks, and transmits them using EspNowTransmitter.
+ * This task reads from SharedSensorData, serializes it to binary format,
+ * divides it into Packet chunks, and transmits them using EspNowTransmitter.
  * 
  * Transmission rate is configurable via constructor.
  */
@@ -64,11 +98,12 @@ protected:
 
 private:
     /**
-     * @brief Collect current sensor data into a JSON object.
+     * @brief Collect current sensor data into a binary telemetry packet.
      * 
-     * @return json JSON object containing all sensor data with timestamp.
+     * @param packet Reference to packet structure to fill with sensor data.
+     * @return true if data collection successful, false on mutex timeout or error.
      */
-    json collectSensorData();
+    bool collectSensorData(TelemetryPacket &packet);
     
     /**
      * @brief Transmit a message by dividing it into packets and sending them.
