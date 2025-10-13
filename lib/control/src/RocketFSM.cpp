@@ -711,7 +711,7 @@ void RocketFSM::checkTransitions()
                     }
                     else if (millis() - launchHighSince > static_cast<unsigned long>(LIFTOFF_TIMEOUT_MS))
                     {
-                        this->launchDetectionTime = millis();
+                        launchDetectionTime = millis();
                         sendEvent(FSMEvent::LAUNCH_DETECTED);
                         launchHighSince = 0;
                     }
@@ -767,7 +767,9 @@ void RocketFSM::checkTransitions()
     case RocketState::BALLISTIC_FLIGHT:
     {
         //LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: is rising = %u", *isRising);
-        if(!*isRising){
+        auto elapsed = millis() - launchDetectionTime;
+        //LOG_INFO("RocketFSM", "now: %.3lu, stateStartTime: %.3lu, evaluated: %.3lu, treshold: %.3lu", millis(), stateStartTime, elapsed, LAUNCH_TO_APOGEE_THRESHOLD);
+        if(!*isRising || (elapsed >= LAUNCH_TO_APOGEE_THRESHOLD)){
             sendEvent(FSMEvent::APOGEE_REACHED);
         }
 
