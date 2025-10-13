@@ -5,7 +5,6 @@
 #include "states/StateAction.hpp"
 #include "states/TransitionManager.hpp"
 #include <SharedData.hpp>
-#include <KalmanFilter1D.hpp>
 #include <Logger.hpp>
 #include "RocketLogger.hpp"
 #include "config.h"
@@ -35,7 +34,6 @@ private:
 
     // Shared data
     std::shared_ptr<SharedSensorData> sharedData;
-    std::shared_ptr<KalmanFilter1D> kalmanFilter;
     std::shared_ptr<RocketLogger> logger;
     SemaphoreHandle_t sensorDataMutex;
     SemaphoreHandle_t loggerMutex;
@@ -52,8 +50,8 @@ private:
     std::shared_ptr<SD> sd;
 
     // Important timers and tresholds
-    const unsigned long ACCELLERATED_TO_BALLISTIC_TRESHOLD = 5300;
-    const unsigned long BALLISTIC_TO_APOGEE_TRESHOLD = 25350; //24850 + 500 = 25350
+    const unsigned long LAUNCH_TO_BALLISTIC_THRESHOLD = 5300;
+    const unsigned long LAUNCH_TO_APOGEE_THRESHOLD = 25350; //24850 + 500 = 25350
     unsigned long launchDetectionTime = 0;
 
 
@@ -63,7 +61,6 @@ public:
               std::shared_ptr<ISensor> barometer2,
               std::shared_ptr<ISensor> accelerometer,
               std::shared_ptr<ISensor> gpsModule,
-              std::shared_ptr<KalmanFilter1D> kf,
               std::shared_ptr<SD> sd,
               std::shared_ptr<RocketLogger> logger
             );

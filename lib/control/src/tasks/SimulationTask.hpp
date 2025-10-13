@@ -12,6 +12,10 @@
 #include <string>
 #include <chrono>
 
+// If this variable is not commented, the format for old simulation of mission analysis (August 2025), 
+// is expected, otherwise the one obtained for Euroc 2025 is expected
+//#define OLD_DATA
+
 class SimulationTask : public BaseTask {
 private:
     bool started = false;

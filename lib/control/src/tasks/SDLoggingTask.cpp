@@ -35,9 +35,7 @@ SDLoggingTask::~SDLoggingTask() {
     stop();
 }
 
-void SDLoggingTask::taskFunction() {
-    LOG_INFO("SDLoggingTask", "Task started, batch size: %d", BATCH_SIZE);
-    
+void SDLoggingTask::taskFunction() {    
     while (running) {
         esp_task_wdt_reset();
         
@@ -47,7 +45,6 @@ void SDLoggingTask::taskFunction() {
         size_t currentLogCount = rocketLogger->getLogCount();
         
         if (currentLogCount >= BATCH_SIZE) {
-            LOG_INFO("SDLoggingTask", "Batch size reached (%zu >= %d), processing...", currentLogCount, BATCH_SIZE);
             
             if (sdInitialized && running) { // Check running before SD operations
                 
@@ -60,11 +57,9 @@ void SDLoggingTask::taskFunction() {
                 // Add task handle to filename to prevent conflicts between multiple instances
                 do {
                     LOG_INFO("SDCard", "Checking filename: JSON_data_%d_%p.json", currentFileCounter, (void*)xTaskGetCurrentTaskHandle());
-                    filename = "JSON_data_" + String(currentFileCounter) + "_" + String((uint32_t)xTaskGetCurrentTaskHandle(), HEX) + ".json";
+                    filename = "JSON_data_" + String(currentFileCounter) + ".json";
                     currentFileCounter++;
                     LOG_INFO("SDCard", "Filename to check: %s", filename.c_str());
-                    
-                    if (!running) break; // Exit if task is stopping
                 } while (sdCard->fileExists(filename.c_str()) && running);
                 
                 if (!running) break; // Exit if task stopped during filename generation
@@ -101,11 +96,6 @@ void SDLoggingTask::taskFunction() {
                     
                     if (!sdCard->writeFile(filename.c_str(), dataToWrite)) {
                         LOG_ERROR("SDLoggingTask", "Failed to write batch to file: %s", filename.c_str());
-                        // Try to log error to RocketLogger if mutex is available
-                        if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-                            rocketLogger->logError("Failed to write batch to SD card.");
-                            xSemaphoreGive(loggerMutex);
-                        }
                     } else {
                         LOG_INFO("SDLoggingTask", "Successfully wrote batch to file: %s (size: %zu bytes)", filename.c_str(), dataToWrite.length());
                     }
@@ -127,21 +117,11 @@ void SDLoggingTask::taskFunction() {
                     xSemaphoreGive(loggerMutex);
                 } else {
                     LOG_ERROR("SDLoggingTask", "Failed to acquire logger mutex for clearing data (SD not initialized)");
-                }   
-            }
-        } else {
-            // Periodic logging to show the task is running
-            static unsigned long lastPeriodicLog = 0;
-            if (millis() - lastPeriodicLog > 5000) { // Log every 5 seconds
-                LOG_DEBUG("SDLoggingTask", "Task running - Log count: %zu/%d", currentLogCount, BATCH_SIZE);
-                lastPeriodicLog = millis();
+                }
             }
         }
         
-        // Use smaller delay chunks to exit faster when stopping
-        for (int i = 0; i < 10 && running; i++) {
-            vTaskDelay(pdMS_TO_TICKS(10)); // 10x10ms = 100ms total, but check every 10ms
-        }
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
     LOG_INFO("SDLoggingTask", "Task exiting");
 }

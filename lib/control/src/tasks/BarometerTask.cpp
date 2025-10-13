@@ -14,94 +14,72 @@ constexpr float R = 287.05f;                  // Air gas constant [J/Kg/K]
 #define n (GRAVITY / (R * a))
 #define nInv ((R * a) / GRAVITY)
 
-float relAltitude(float pressure, float pressureRef = 99323.79032f,
-                  float temperatureRef = 299.15f)
+float relAltitude(float pressure, float pressureRef = 99696.0f,
+                  float temperatureRef = 301.41f)
 {
     return temperatureRef / a * (1 - powf(pressure / pressureRef, nInv));
 }
 
 void BarometerTask::taskFunction()
 {
-    float altitude1, altitude2;
-    float pressure1, pressure2;
-
-    // Filtered values
-    float filtered_pressure1, filtered_pressure2;
-    float filtered_altitude1, filtered_altitude2;
-
-    vTaskDelay(pdMS_TO_TICKS(100)); // Initial delay to allow sensors to stabilize
+    float altitude, pressure;
+    float filtered_pressure, filtered_altitude;
 
     //LOG_INFO("BarometerTask", "Starting with median filter (window=%d)", BAROMETER_FILTER_WINDOW);
 
     while (running)
     {
+
         esp_task_wdt_reset();
-
+        if(!running) break;
+        
         // Read raw data from barometers
-        auto presOpt1 = sensorData->baroData1.getData("pressure");
-        auto presVal1 = std::get<float>(presOpt1.value());
-        auto presOpt2 = sensorData->baroData2.getData("pressure");
-        auto presVal2 = std::get<float>(presOpt2.value());
-
+        #ifdef BARO_1            
+            auto presOpt = sensorData->baroData1.getData("pressure");
+        #else
+            auto presOpt = sensorData->baroData2.getData("pressure");
+        #endif
+        
+        pressure = std::get<float>(presOpt.value());
+        
         // Apply filters and compute altitudes
-        filtered_pressure1 = pressureFilter1.update(pressure1);
-        filtered_pressure2 = pressureFilter2.update(pressure2);
-
-        //Da cambiare quando si sceglie il barometro da usare
-        addPressureTrendValue(filtered_pressure1);
-        //addPressureTrendValue(filtered_pressure2);
+        filtered_pressure = pressureFilter.update(pressure);
+        
+        addPressureTrendValue(filtered_pressure);
         
         // Calculate altitudes for comparison
-        altitude1 = relAltitude(pressure1);              // Raw altitude
-        filtered_altitude1 = relAltitude(filtered_pressure1);  // Filtered altitude
-        altitude2 = relAltitude(pressure2);              // Raw altitude
-        filtered_altitude2 = relAltitude(filtered_pressure2);  // Filtered altitude
+        altitude = relAltitude(pressure);              // Raw altitude
+        filtered_altitude = relAltitude(filtered_pressure);  // Filtered altitude
 
-        // Da confermare se questa operazione è da fare in questo punto del ciclo
+        // Controls if the last readings indicate that the system is rising or not
+        // True if at least one value in the buffer is higher than the previous maximum 
+        // This function could be moved to the hpp for cleaner code, but just want to be sure
+        // possiamo fare in questo modo o mettere questo codice nel loop qui sopra ed avere una variabile bool privata con una funzione getter
         if (pressureTrendBuffer.size() < trendBufferSize){
             *isRising = true; // Assume rising until we have enough data
         } else {
-            for (size_t i = 0; i < pressureTrendBuffer.size(); ++i) {
-                if (relAltitude(pressureTrendBuffer[i]) > max_altitude_read) {
-                    *isRising = true;
+            bool rised  = false;
+            for (size_t i = 0; i < pressureTrendBuffer.size(); i++) {
+                if (relAltitude(pressureTrendBuffer[i]) >= max_altitude_read) {
+                    rised = true;
+                    break;
                 }
             }
-            *isRising = false;
+            
+            *isRising = rised;            
         }
+
+        
+        LOG_INFO("BarometerTask", "Altitude value: %0.2f, Max_Altitude: %0.2f", filtered_altitude, max_altitude_read);
         
         // True se l'ultima lettura del buffer è inferiore alla quota di deploy
-        // Da cambiare quando si sceglie il barometro da usare
-        *currentHeight = filtered_altitude1;
-        // *currentHeight = filtered_altitude2;
+        *currentHeight = filtered_altitude;
 
-        if (filtered_altitude1 > max_altitude_read)
-            max_altitude_read = filtered_altitude1;
-        if (filtered_altitude2 > max_altitude_read)
-            max_altitude_read = filtered_altitude2;
+        if (filtered_altitude > max_altitude_read) {
+            max_altitude_read = filtered_altitude;
+        }
 
-        /*LOG_INFO("BarometerTask", "Temperatures: Baro1=%.2f K, Baro2=%.2f K",
-                 temperature1, temperature2);
-        LOG_INFO("BarometerTask", "Pressures (raw→filtered): Baro1=%.2f→%.2f hPa, Baro2=%.2f→%.2f hPa",
-                 pressure1, filtered_pressure1, pressure2, filtered_pressure2);
-        LOG_INFO("BarometerTask", "Altitudes (raw→filtered): Baro1=%.2f→%.2f m, Baro2=%.2f→%.2f m, Max=%.2f m",
-                 altitude1, filtered_altitude1, altitude2, filtered_altitude2, max_altitude_read);
-        */
-        vTaskDelay(pdMS_TO_TICKS(5)); // 200Hz
+        vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz
     }
 
 }
-
-// Controls if the last readings indicate that the system is rising or not
-// True if at least one value in the buffer is higher than the previous maximum 
-// This function could be moved to the hpp for cleaner code, but just want to be sure
-// possiamo fare in questo modo o mettere questo codice nel loop qui sopra ed avere una variabile bool privata con una funzione getter
-/*bool BarometerTask::isStillRising() {
-    if (pressureTrendBuffer.size() < trendBufferSize) return false;
-    
-    for (size_t i = 0; i < pressureTrendBuffer.size(); ++i) {
-        if (pressureTrendBuffer[i] > max_altitude_read) {
-            return isRising = true;
-        }
-    }
-    return isRising = false;
-}*/

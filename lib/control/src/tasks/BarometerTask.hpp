@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 
+// If not commented, the Baro1 is used, otherwise Baro2
+#define BARO_1
+
 // Simple moving average filter for noise reduction
 class MovingAverageFilter {
 public:
@@ -44,7 +47,7 @@ private:
 // Median filter for spike rejection (better for outliers than moving average)
 class MedianFilter {
 public:
-    MedianFilter(size_t windowSize = 5) : windowSize(windowSize) {
+    MedianFilter(size_t windowSize) : windowSize(windowSize) {
         buffer.reserve(windowSize);
     }
     
@@ -114,18 +117,19 @@ private:
     
     // Noise reduction: Median filters reject spikes better than moving average
     // Window size from config.h - tune BAROMETER_FILTER_WINDOW for your needs
-    MedianFilter pressureFilter1{BAROMETER_FILTER_WINDOW};
-    MedianFilter pressureFilter2{BAROMETER_FILTER_WINDOW};
+    MedianFilter pressureFilter{BAROMETER_FILTER_WINDOW};
 
     // Buffer for tendency filtering, used in isStillRising()
     std::vector<float> pressureTrendBuffer;
-    size_t trendBufferSize = 10; // Apogee detection window size
+    size_t trendBufferSize = APOGEE_DETECTION_WINDOW_SIZE;
     size_t mainDeploymentAltitude = 450; // Altitude for main deployment in meters
 
     // Called in update to add new values to the filter and remove old ones
     void addPressureTrendValue(float value) {
-        if (pressureTrendBuffer.size() >= trendBufferSize)
+        if (pressureTrendBuffer.size() >= trendBufferSize) {
             pressureTrendBuffer.erase(pressureTrendBuffer.begin());
+        }
+            
         pressureTrendBuffer.push_back(value);
     }
 

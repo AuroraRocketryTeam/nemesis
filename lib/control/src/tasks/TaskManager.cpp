@@ -3,7 +3,6 @@
 #include <config.h>
 
 TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
-                            std::shared_ptr<KalmanFilter1D> kalmanFilter,
                             std::shared_ptr<ISensor> imu,
                             std::shared_ptr<ISensor> barometer1,
                             std::shared_ptr<ISensor> barometer2,
@@ -15,7 +14,7 @@ TaskManager::TaskManager(std::shared_ptr<SharedSensorData> sensorData,
                             std::shared_ptr<bool> isRising,
                             std::shared_ptr<float> heightGainSpeed,
                             std::shared_ptr<float> currentHeight) : 
-                            sensorData(sensorData), kalmanFilter(kalmanFilter),
+                            sensorData(sensorData),
                             bno055(imu), baro1(barometer1), baro2(barometer2), 
                                                           gps(gps), 
                             sensorDataMutex(sensorMutex), sd(sd), rocketLogger(rocketLogger),
@@ -71,10 +70,10 @@ void TaskManager::initializeTasks()
         gps,
         rocketLogger,
         loggerMutex);
-    tasks[TaskType::EKF] = std::make_unique<EkfTask>(
-        sensorData, 
-        sensorDataMutex, 
-        kalmanFilter);
+    // tasks[TaskType::EKF] = std::make_unique<EkfTask>(
+    //     sensorData, 
+    //     sensorDataMutex, 
+    //     kalmanFilter);
     tasks[TaskType::SD_LOGGING] = std::make_unique<SDLoggingTask>(
         rocketLogger,
         loggerMutex,

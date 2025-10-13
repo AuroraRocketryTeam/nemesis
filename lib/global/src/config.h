@@ -43,15 +43,15 @@
 // #define TRANSMITTER_CONFIG_MODE_ENABLE // Enable configuration mode for the transmitter (needs to be tested on new hardware)
 
 // Number of log entries to batch before writing to SD card
-#define BATCH_SIZE 10
+#define BATCH_SIZE 30
 
 // Maximum log entries before forcing a clear (emergency protection)
 #define MAX_LOG_ENTRIES 20
 
 /* Flight parameters configuration */
 #define LIFTOFF_ACCELERATION_THRESHOLD GRAVITY * 2.0f // Threshold for the detection of liftoff when relative_acceleration is > 2G in any direction (relative_acceleration = acceleration - gravity)
-#define LIFTOFF_TIMEOUT_MS 100    // Threshold for the detection of liftoff
-#define DROGUE_APOGEE_TIMEOUT 300 // Threshold for opening the drogue parachute after apogee is detected
+#define LIFTOFF_TIMEOUT_MS 1000    // Threshold for the detection of liftoff
+#define DROGUE_APOGEE_TIMEOUT 2000 // Threshold for opening the drogue parachute after apogee is detected
 #define MAIN_ALTITUDE_THRESHOLD 450.0f // Altitude threshold for the deployment of the main parachute (in meters)
 #define TOUCHDOWN_VELOCITY_THRESHOLD 2.0f // Vertical velocity threshold for touchdown detection (in m/s)
 
@@ -60,8 +60,8 @@
 // Replace with your actual receiver MAC address
 #define ESPNOW_PEER_MAC { 0x34, 0xCD, 0xB0, 0x3C, 0x54, 0xB4 }
 #define ESPNOW_CHANNEL 1 // WiFi channel (1-13)
-#define TELEMETRY_INTERVAL_MS 700
-#define TOUCHDOWN_ALTITUDE_THRESHOLD 5.0f // Altitude threshold for touchdown detection (in meters)
+#define TELEMETRY_INTERVAL_MS 500
+#define TOUCHDOWN_ALTITUDE_THRESHOLD 15.0f // Altitude threshold for touchdown detection (in meters)
 
 // In the case of the model velocity is extremely wrong, the access to the parachute is denied, and let to the CatsVega, to avoid the opening of it during ascension
 #define MIN_ACCECTABLE_VELOCITY -1000
@@ -88,7 +88,8 @@
 // Smaller = faster response but more noise (1 = no filtering)
 // Larger = smoother but more lag (recommended: 3-7)
 // At 10Hz sampling: window=5 adds 50ms lag
-#define BAROMETER_FILTER_WINDOW 5
+#define BAROMETER_FILTER_WINDOW 9
+#define APOGEE_DETECTION_WINDOW_SIZE 15
 
 #define STATE_INDEX_ALTITUDE 0
 #define STATE_INDEX_VELOCITY 1
