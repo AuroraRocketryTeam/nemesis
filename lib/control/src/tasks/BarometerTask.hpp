@@ -47,7 +47,7 @@ private:
 // Median filter for spike rejection (better for outliers than moving average)
 class MedianFilter {
 public:
-    MedianFilter(size_t windowSize = 5) : windowSize(windowSize) {
+    MedianFilter(size_t windowSize) : windowSize(windowSize) {
         buffer.reserve(windowSize);
     }
     
@@ -121,7 +121,7 @@ private:
 
     // Buffer for tendency filtering, used in isStillRising()
     std::vector<float> pressureTrendBuffer;
-    size_t trendBufferSize = 10; // Apogee detection window size
+    size_t trendBufferSize = APOGEE_DETECTION_WINDOW_SIZE;
     size_t mainDeploymentAltitude = 450; // Altitude for main deployment in meters
 
     // Called in update to add new values to the filter and remove old ones
