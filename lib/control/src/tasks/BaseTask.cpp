@@ -5,16 +5,18 @@
 BaseTask::BaseTask(const char *name)
     : taskHandle(nullptr), running(false), taskName(name)
 {
-    // Constructor
+    LOG_INFO("BaseTask", "Successfully created task: %s", taskName);
 }
 
 BaseTask::~BaseTask()
 {
+    LOG_INFO("BaseTask", "Deleting task: %s", taskName);
     stop();
 }
 
 bool BaseTask::start(const TaskConfig &config)
 {
+    LOG_INFO("BaseTask", "Successfully started task: %s", taskName);
     if (running)
         return false;
 

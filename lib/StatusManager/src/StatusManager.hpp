@@ -11,6 +11,7 @@ enum SystemCode
     CALIBRATING,
     WAITING_INPUT,
     FLIGHT_MODE,
+    FSM_STARTED,
 
     IMU_FAIL = 20,
     IMU_DATA_INVALID,

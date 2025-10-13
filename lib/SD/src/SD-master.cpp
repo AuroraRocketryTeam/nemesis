@@ -7,7 +7,8 @@
  */
 bool SD::init()
 {
-    return this->SD.begin(SD_CS, SPI_FULL_SPEED);
+    this->fileInitialized = this->SD.begin(SD_CS, SPI_FULL_SPEED);
+    return this->fileInitialized;
 }
 
 /**
@@ -26,6 +27,9 @@ bool SD::openFile(std::string filename)
     {
         this->file->open(filename.c_str(), O_RDWR | O_CREAT | O_AT_END);
     }
+
+    this->file->seekSet(0);
+
     return this->file->isOpen();
 }
 
@@ -207,4 +211,38 @@ bool SD::clearSD()
 bool SD::fileExists(std::string filename)
 {
     return this->SD.exists(filename.c_str());
+}
+
+/**
+ * @brief Reads a single line from the currently open file
+ *
+ * @return String containing the next line, or empty String if EOF or error
+ */
+String SD::readLine() {
+    if (this->file == nullptr) {
+        LOG_INFO("SD-Task", "File pointer null");
+        return String("");
+    }
+    if (!this->file->isOpen()) {
+        LOG_INFO("SD-Task", "File not open");
+        return String("");
+    }
+
+    // Read a whole line inside of a String
+    String str = "";    
+    char ch;
+    int bytesRead = 0;
+    
+    while (this->file->read(&ch, 1) == 1) {
+        bytesRead++;
+        
+        if (ch == '|') {
+            break;
+        }
+        if (ch != '\r') {  // Skip carriage return characters
+            str += ch;
+        }
+    }
+    
+    return str;
 }

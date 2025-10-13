@@ -6,19 +6,17 @@ void GpsTask::taskFunction()
     unsigned long loopCounter = 0;
     while (running)
     {
-        esp_task_wdt_reset(); // Reset watchdog created in BaseTask
-        
-        // Check early for fast exit
-        if (!running) break;
-
+        esp_task_wdt_reset();
         if (gps)
         {
             auto gpsData = gps->getData();
-            if (gpsData && running) // Check before mutex
+            // Write to shared data
+            if (gpsData.has_value())
             {
                 if (dataMutex && xSemaphoreTake(dataMutex, mutexTimeout) == pdTRUE)
                 {
-                    sensorData->gpsData = *gpsData;
+                    sensorData->gpsData = gpsData.value();
+                    LOG_INFO("GpsTask", "Got GPS data");
                     xSemaphoreGive(dataMutex);
                     if ((loopCounter & 0x0F) == 0)
                         LOG_INFO("GpsTask", "GPS update stored");
@@ -28,6 +26,26 @@ void GpsTask::taskFunction()
                     if ((loopCounter & 0x0F) == 0)
                         LOG_WARNING("GpsTask", "Failed to take data mutex");
                 }
+                
+                if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    // Only log GPS data every 10 loops (every ~2 seconds) to reduce memory pressure
+                    if ((loopCounter % 10) == 0) {
+                        auto timestampData = SensorData("Timestamp");
+                        timestampData.setData("timestamp", static_cast<int>(millis()));
+                        rocketLogger->logSensorData(timestampData);
+                        
+                        rocketLogger->logSensorData("GPS", gpsData.value());
+                        
+                        // Log current RocketLogger memory usage for monitoring
+                        if ((loopCounter % 50) == 0) {
+                            LOG_INFO("GpsTask", "RocketLogger entries: %d", rocketLogger->getLogCount());
+                        }
+                    }
+                    xSemaphoreGive(loggerMutex);
+                } else {
+                    LOG_WARNING("GpsTask", "Failed to take logger mutex");
+                }
+
             }
             else
             {

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -5,6 +7,7 @@
 #include <ILogger.hpp>
 #include <LogMessage.hpp>
 #include <LogSensorData.hpp>
+#include "Logger.hpp"
 
 using json = nlohmann::json;
 
@@ -14,6 +17,11 @@ using json = nlohmann::json;
  */
 class RocketLogger : public ILogger {
 public:
+    /**
+     * @brief Destructor to clean up dynamically allocated memory.
+     */
+    ~RocketLogger();
+
     /**
      * @brief Log an informational message.
      * 
@@ -61,5 +69,5 @@ public:
      * @brief Clear all logged sensor data.
      * 
      */
-    void clearData();
+    void clearData() override;
 };

@@ -6,8 +6,11 @@
 enum class TaskType
 {
     SENSOR,
+    SIMULATION,
     EKF,
     RECOVERY,
+    DATA_COLLECTION,
+    SD_LOGGING,
     TELEMETRY,
     GPS,
     BAROMETER,

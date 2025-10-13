@@ -40,7 +40,6 @@
 #include <StatusManager.hpp>
 
 // Main system
-#include <KalmanFilter1D.hpp>
 #include <RocketFSM.hpp>
 
 /**
@@ -48,8 +47,8 @@
  * Useful for fast testing without needing precise sensor reads.
  *
  */
-// #define CALIBRATE_SENSORS
-// #define ENABLE_PRE_FLIGHT_MODE
+#define CALIBRATE_SENSORS
+#define ENABLE_PRE_FLIGHT_MODE
 #define TEST_FILE "/test.txt"
 
 // Create controller instances
@@ -69,8 +68,8 @@ std::shared_ptr<ISensor> accl = nullptr;
 
 std::shared_ptr<SD> sdCard = nullptr;
 
-ILogger *rocketLogger = nullptr;
-std::shared_ptr<KalmanFilter1D> ekf = nullptr;
+// Define the RocketLogger
+std::shared_ptr<RocketLogger> rocketLogger = nullptr;
 
 // FSM instance
 std::unique_ptr<RocketFSM> rocketFSM;
@@ -78,24 +77,35 @@ std::unique_ptr<RocketFSM> rocketFSM;
 // Utility functions
 void testFSMTransitions(RocketFSM &fsm);
 void initializeComponents();
-void sensorsCalibration();
-void initializeKalman();
+void GPSfix();
 void printSystemInfo();
 void testRoutine();
 void gpsFix();
 
 void setup()
 {
+    // Initialize actuator pins
     pinMode(MAIN_ACTUATOR_PIN, OUTPUT);
     pinMode(DROGUE_ACTUATOR_PIN, OUTPUT);
-    // Deactivate actuators
+
     digitalWrite(MAIN_ACTUATOR_PIN, LOW);
     digitalWrite(DROGUE_ACTUATOR_PIN, LOW);
+
+    // Initialize LED pins (only those not handled by controllers)
+    pinMode(LED_RED, OUTPUT);
+    pinMode(LED_GREEN, OUTPUT);
+    pinMode(LED_BLUE, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    digitalWrite(LED_RED, HIGH);
+    digitalWrite(LED_BUILTIN, LOW);
+
     // Initialize pins (only those not handled by controllers)
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(ARMING_PIN, INPUT);
     // Signal initialization start
     digitalWrite(LED_RED, HIGH);
 
@@ -104,7 +114,6 @@ void setup()
 
     // Initialize basic hardware
     Serial.begin(SERIAL_BAUD_RATE);
-
     // Initialize controllers
     ledController.init();
     buzzerController.init();
@@ -126,7 +135,7 @@ void setup()
     initializeComponents();
 
 #ifdef ENABLE_PRE_FLIGHT_MODE
-    delay(10000);
+    delay(5000);
     // Start test routine if in test mode
     LOG_INFO("Main", "=== TEST MODE ENABLED ===");
     testRoutine();
@@ -135,50 +144,74 @@ void setup()
 #ifdef CALIBRATE_SENSORS
     // Checking sensors calibration
     statusManager.setSystemCode(CALIBRATING);
-    sensorsCalibration();
+    GPSfix();
     statusManager.setSystemCode(SYSTEM_OK);
 #endif
 
-    // Initialize kalman
-    statusManager.setSystemCode(CALIBRATING);
-    //initializeKalman();
-    gpsFix();
-    statusManager.setSystemCode(SYSTEM_OK);
+    // Initialize logger
+    LOG_INFO("Init", "Initializing rocket logger...");
+    rocketLogger = std::make_shared<RocketLogger>();
+    LOG_INFO("Init", "✓ Rocket logger initialized");
+
     // Print system information
     printSystemInfo();
 
     // Initialize and start FSM
     LOG_INFO("Main", "=== System initialization complete ===");
     LOG_INFO("Main", "\n=== Initializing Flight State Machine ===");
-    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, ekf);
+    rocketFSM = std::make_unique<RocketFSM>(bno055, baro1, baro2, accl, gps, sdCard, rocketLogger);
     rocketFSM->init();
-    // statusManager.setSystemCode(FLIGHT_MODE);
-
-    // Give system a moment to stabilize
-    // delay(1000);
-    // testFSMTransitions(*rocketFSM);
     delay(1000);
+
+    // Wait for arming pin to be enabled before starting FSM
+    statusManager.setSystemCode(PRE_FLIGHT_MODE);
+    while (digitalRead(ARMING_PIN) == LOW)
+    {
+        LOG_WARNING("Main", "System not armed! Waiting for arming signal on pin %d...", ARMING_PIN);
+        delay(1000);
+    }
     // Start FSM tasks
-    statusManager.setSystemCode(FLIGHT_MODE);
+    LOG_INFO("Main", "Starting Flight State Machine...");
+    statusManager.setSystemCode(FSM_STARTED);
+    delay(1000);
     rocketFSM->start();
+    statusManager.setSystemCode(FLIGHT_MODE);
 
     // Signal successful initialization
     digitalWrite(LED_RED, LOW);
     digitalWrite(LED_GREEN, HIGH);
+    LOG_INFO("Main", "SETUP COMPLETE - SYSTEM IN FLIGHT MODE");
 }
 
 void loop()
 {
-    // Main loop is kept minimal since everything runs in FreeRTOS tasks
+    auto currentState = rocketFSM->getCurrentState();
+    LOG_INFO("Main", "Current FSM State: %s", rocketFSM->getStateString(currentState));
+    LOG_INFO("Main", "Free heap: %u bytes", ESP.getFreeHeap());
+
     static unsigned long lastHeartbeat = 0;
     static bool ledState = false;
 
     // Heartbeat every 2 seconds
     if (millis() - lastHeartbeat > 2000)
     {
+        LOG_INFO("Main", "Last heartbeat at %lu ms - System running", millis());
         lastHeartbeat = millis();
         ledState = !ledState;
         digitalWrite(LED_BUILTIN, ledState);
+
+        // Monitor RocketLogger memory usage
+        if (rocketLogger)
+        {
+            int logCount = rocketLogger->getLogCount();
+            LOG_INFO("Main", "RocketLogger entries: %d", logCount);
+
+            // If log count is high, warn about memory usage
+            if (logCount > 800)
+            {
+                LOG_WARNING("Main", "RocketLogger approaching memory limit (%d entries)", logCount);
+            }
+        }
 
         // Optional: Print current state periodically
         static RocketState lastLoggedState = RocketState::INACTIVE;
@@ -381,95 +414,45 @@ void initializeComponents()
     LOG_INFO("Init", "✓ Status indicators initialized");
 }
 
-// Function to check sensors calibration
-void sensorsCalibration()
+// Function to check GPS fix
+void GPSfix()
 {
-    LOG_INFO("BNO055", "Calibrating BNO055 sensors...");
-    if (bno055)
+    if (gps)
     {
-        auto bnoData = bno055->getData();
+        LOG_INFO("GPS", "Checking GPS lock...");
 
-        if (!bnoData.has_value())
+        bool gpsLocked = false;
+        unsigned long startTime = millis();
+
+        while (!gpsLocked && (millis() - startTime < GPS_FIX_TIMEOUT_MS))
         {
-            LOG_WARNING("BNO055", "BNO055 not initialized, skipping calibration.");
-            return;
+            auto gpsDataOpt = gps->getData();
+            if (gpsDataOpt.has_value())
+            {
+                LOG_INFO("GPS", "Getting GPS data...");
+                auto gpsData = gpsDataOpt.value();
+                auto fix_opt = gpsData.getData("fix");
+                auto satellites_opt = gpsData.getData("satellites");
+                if (fix_opt.has_value())
+                {
+                    uint8_t fix = std::get<uint8_t>(fix_opt.value());
+                    LOG_INFO("GPS", "Fix value: %d", fix);
+                    if (fix >= GPS_MIN_FIX)
+                    {
+                        gpsLocked = true;
+                        LOG_INFO("GPS", "GPS lock acquired. Satellites: %d", std::get<uint8_t>(satellites_opt.value()));
+                    }
+                }
+            }
+            delay(GPS_FIX_LOOKUP_INTERVAL_MS);
         }
 
-        auto sensorData = bnoData.value();
-        auto gyro_cal_opt = sensorData.getData("gyro_calibration");
-        auto accel_cal_opt = sensorData.getData("accel_calibration");
-        auto mag_cal_opt = sensorData.getData("mag_calibration");
-
-        if (!gyro_cal_opt.has_value() ||
-            !accel_cal_opt.has_value() || !mag_cal_opt.has_value())
+        if (!gpsLocked)
         {
-            LOG_WARNING("BNO055", "Could not read calibration status, skipping calibration.");
-            return;
-        }
-
-        auto gyro_cal = std::get<uint8_t>(gyro_cal_opt.value());
-        auto accel_cal = std::get<uint8_t>(accel_cal_opt.value());
-        auto mag_cal = std::get<uint8_t>(mag_cal_opt.value());
-
-        // Find minimum calibration status
-        uint8_t min_calibration = std::min({gyro_cal, accel_cal, mag_cal});
-
-        if (min_calibration < IMU_MINIMUM_CALIBRATION)
-        {
-            LOG_INFO("BNO055", "Calibrating BNO055's gyro...");
-            do
-            {
-                sensorData = bno055->getData().value();
-                gyro_cal_opt = sensorData.getData("gyro_calibration");
-                gyro_cal = std::get<uint8_t>(gyro_cal_opt.value());
-
-                LOG_INFO("BNO055", "Current Gyro calibration status: %d/3", gyro_cal);
-                LOG_INFO("BNO055", "Keep the sensor still on a flat surface.");
-            } while (gyro_cal < IMU_MINIMUM_CALIBRATION);
-
-            LOG_INFO("BNO055", "Calibrating BNO055's accel...");
-            do
-            {
-                sensorData = bno055->getData().value();
-                auto accel_opt = sensorData.getData("accelerometer");
-                auto accelMap = std::get<std::map<std::string, float>>(accel_opt.value());
-                auto acceleration_x = accelMap["x"];
-                auto acceleration_y = accelMap["y"];
-                auto acceleration_z = accelMap["z"];
-                LOG_INFO("BNO055", "Acceleration: x=%.2f, y=%.2f, z=%.2f m/s^2",
-                         (double)acceleration_x,
-                         (double)acceleration_y,
-                         (double)acceleration_z);
-
-                accel_cal_opt = sensorData.getData("accel_calibration");
-                accel_cal = std::get<uint8_t>(accel_cal_opt.value());
-
-                LOG_INFO("BNO055", "Current Accel calibration status: %d/3", accel_cal);
-                LOG_INFO("BNO055", "Place the sensor in these 6 standing positions for about 5 seconds each\n(Positive = +9.8 m/s^2, Negative = -9.8 m/s^2):\n1. +X\n2. -X\n3. +Y\n4. -Y\n5. +Z\n6. -Z\n");
-                delay(100);
-            } while (accel_cal < IMU_MINIMUM_CALIBRATION);
-
-            LOG_INFO("BNO055", "Calibrating BNO055's mag...");
-            do
-            {
-                sensorData = bno055->getData().value();
-                mag_cal_opt = sensorData.getData("mag_calibration");
-                mag_cal = std::get<uint8_t>(mag_cal_opt.value());
-
-                LOG_INFO("BNO055", "Current Mag calibration status: %d/3", mag_cal);
-                LOG_INFO("BNO055", "Move the sensor in a figure-8 pattern for few seconds.");
-            } while (mag_cal < IMU_MINIMUM_CALIBRATION);
-            LOG_INFO("BNO055", "BNO055 calibration complete.");
-        }
-        else
-        {
-            LOG_INFO("BNO055", "BNO055 already calibrated.");
+            LOG_ERROR("GPS", "GPS lock not acquired within timeout period.");
         }
     }
-    else
-    {
-        LOG_WARNING("BNO055", "BNO055 not initialized, skipping calibration.");
-    }
+
     LOG_INFO("Calibration", "Sensor calibration complete.");
     statusManager.setSystemCode(SYSTEM_OK);
 }
@@ -498,152 +481,6 @@ Eigen::Vector3f calculateStandardDeviation(const std::vector<Eigen::Vector3f> &r
     }
     variance /= static_cast<float>(readings.size() - 1);
     return variance.cwiseSqrt();
-}
-
-// Finish implementation !!!
-void initializeKalman()
-{
-    // Store calibration samples - use BNO055 for both accel and mag
-    std::vector<Eigen::Vector3f> accelSamples;
-    std::vector<Eigen::Vector3f> magSamples;
-    LOG_INFO("EKF", "Collecting calibration samples for Kalman Filter...");
-    LOG_INFO("EKF", "Keep the rocket STATIONARY and LEVEL during calibration!");
-
-    if (!bno055)
-    {
-        LOG_ERROR("EKF", "BNO055 not initialized! Cannot calibrate Kalman Filter.");
-        return;
-    }
-
-    // Collect synchronized samples from BNO055 (both accel and mag)
-    int successfulSamples = 0;
-    for (int i = 0; i < NUM_CALIBRATION_SAMPLES * 2; i++) // Try up to 2x samples in case some fail
-    {
-        auto bnoDataOpt = bno055->getData();
-        if (bnoDataOpt.has_value())
-        {
-            auto bnoData = bnoDataOpt.value();
-
-            // Get accelerometer data from BNO055
-            auto accel_opt = bnoData.getData("accelerometer");
-            auto mag_opt = bnoData.getData("magnetometer");
-
-            if (accel_opt.has_value() && mag_opt.has_value())
-            {
-                // Extract accelerometer values
-                auto accelMap = std::get<std::map<std::string, float>>(accel_opt.value());
-                Eigen::Vector3f accel(accelMap["x"], accelMap["y"], accelMap["z"]);
-
-                // Extract magnetometer values
-                auto magMap = std::get<std::map<std::string, float>>(mag_opt.value());
-                Eigen::Vector3f mag(magMap["x"], magMap["y"], magMap["z"]);
-
-                // Sanity check: accelerometer should be close to 9.8 m/s^2 when stationary
-                float accelNorm = accel.norm();
-                if (accelNorm > 8.0f && accelNorm < 12.0f) // Allow some tolerance
-                {
-                    accelSamples.push_back(accel);
-                    magSamples.push_back(mag);
-                    successfulSamples++;
-
-                    if (successfulSamples >= NUM_CALIBRATION_SAMPLES)
-                    {
-                        break; // Got enough good samples
-                    }
-                }
-                else
-                {
-                    LOG_WARNING("EKF", "Rejecting sample %d: abnormal accel norm %.2f m/s^2 (expected ~9.8)",
-                                i, static_cast<double>(accelNorm));
-                }
-            }
-        }
-
-        delay(50); // 50ms between samples = 20 Hz
-    }
-
-    if (successfulSamples < NUM_CALIBRATION_SAMPLES)
-    {
-        LOG_ERROR("EKF", "Failed to collect enough valid samples (%d/%d). Is the rocket moving?",
-                  successfulSamples, NUM_CALIBRATION_SAMPLES);
-        return;
-    }
-
-    LOG_INFO("EKF", "Collected %d valid calibration samples", successfulSamples);
-
-    // Evaluate quality of collected samples through stddev
-    auto accelStdDev = calculateStandardDeviation(accelSamples);
-    auto magStdDev = calculateStandardDeviation(magSamples);
-
-    LOG_INFO("EKF", "Accelerometer std dev: x=%.4f, y=%.4f, z=%.4f (norm: %.4f)",
-             static_cast<double>(accelStdDev.x()),
-             static_cast<double>(accelStdDev.y()),
-             static_cast<double>(accelStdDev.z()),
-             static_cast<double>(accelStdDev.norm()));
-
-    LOG_INFO("EKF", "Magnetometer std dev: x=%.4f, y=%.4f, z=%.4f (norm: %.4f)",
-             static_cast<double>(magStdDev.x()),
-             static_cast<double>(magStdDev.y()),
-             static_cast<double>(magStdDev.z()),
-             static_cast<double>(magStdDev.norm()));
-
-    if (accelStdDev.norm() > STD_THRESHOLD)
-    {
-        LOG_WARNING("EKF", "High accelerometer noise during calibration: %.4f (threshold: %.4f)",
-                    static_cast<double>(accelStdDev.norm()),
-                    static_cast<double>(STD_THRESHOLD));
-        LOG_WARNING("EKF", "Rocket may be moving or experiencing vibrations!");
-    }
-
-    if (magStdDev.norm() > STD_THRESHOLD)
-    {
-        LOG_WARNING("EKF", "High magnetometer noise during calibration: %.4f (threshold: %.4f)",
-                    static_cast<double>(magStdDev.norm()),
-                    static_cast<double>(STD_THRESHOLD));
-        LOG_WARNING("EKF", "Magnetic interference detected!");
-    }
-
-    // Calculate mean values for calibration
-    auto accelMean = calculateMean(accelSamples);
-    auto magMean = calculateMean(magSamples);
-
-    LOG_INFO("EKF", "Gravity vector (accel mean): x=%.4f, y=%.4f, z=%.4f (norm: %.4f m/s^2)",
-             static_cast<double>(accelMean.x()),
-             static_cast<double>(accelMean.y()),
-             static_cast<double>(accelMean.z()),
-             static_cast<double>(accelMean.norm()));
-
-    LOG_INFO("EKF", "Magnetic field (mag mean): x=%.4f, y=%.4f, z=%.4f (norm: %.4f uT)",
-             static_cast<double>(magMean.x()),
-             static_cast<double>(magMean.y()),
-             static_cast<double>(magMean.z()),
-             static_cast<double>(magMean.norm()));
-
-    // Initialize Kalman Filter with calibration data
-    LOG_INFO("EKF", "Initializing Kalman Filter with calibration data...");
-    ekf = std::make_shared<KalmanFilter1D>(accelMean, magMean);
-
-    if (ekf)
-    {
-        LOG_INFO("EKF", "✓ Kalman Filter initialized successfully");
-
-        // Print initial state
-        float *state = ekf->state();
-        LOG_INFO("EKF", "Initial state: pos=%.4f m, vel=%.4f m/s",
-                 static_cast<double>(state[0]),
-                 static_cast<double>(state[1]));
-        LOG_INFO("EKF", "Initial quaternion: w=%.4f, x=%.4f, y=%.4f, z=%.4f",
-                 static_cast<double>(state[2]),
-                 static_cast<double>(state[3]),
-                 static_cast<double>(state[4]),
-                 static_cast<double>(state[5]));
-    }
-    else
-    {
-        LOG_ERROR("EKF", "✗ Failed to initialize Kalman Filter");
-    }
-
-    LOG_INFO("EKF", "--- EKF Calibration complete ---");
 }
 
 // Helper function to show a pattern for a specific test
@@ -803,6 +640,8 @@ bool testSensors()
                          (double)accelMap["z"]);
                 pinMode(D5, OUTPUT);
                 digitalWrite(D5, HIGH);
+                pinMode(D5, OUTPUT);
+                digitalWrite(D5, HIGH);
             }
             else
             {
@@ -826,6 +665,8 @@ bool testSensors()
                 LOG_INFO("Test", "Barometer 1 Pressure: %.2f hPa", (double)pressure);
                 pinMode(A7, OUTPUT);
                 digitalWrite(A7, HIGH);
+                pinMode(A7, OUTPUT);
+                digitalWrite(A7, HIGH);
             }
             else
             {
@@ -847,6 +688,8 @@ bool testSensors()
             {
                 float pressure = std::get<float>(pressure_opt.value());
                 LOG_INFO("Test", "Barometer 2 Pressure: %.2f hPa", (double)pressure);
+                pinMode(D4, OUTPUT);
+                digitalWrite(D4, HIGH);
                 pinMode(D4, OUTPUT);
                 digitalWrite(D4, HIGH);
             }
@@ -877,6 +720,8 @@ bool testSensors()
                          (double)x,
                          (double)y,
                          (double)z);
+                pinMode(A6, OUTPUT);
+                digitalWrite(A6, HIGH);
                 pinMode(A6, OUTPUT);
                 digitalWrite(A6, HIGH);
             }

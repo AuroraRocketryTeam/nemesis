@@ -37,6 +37,7 @@ public:
      */
     StateAction &setEntryAction(const std::function<void()> &action)
     {
+        tone(BUZZER_PIN, 100, 10);
         entryAction = action;
         return *this;
     }

@@ -18,6 +18,15 @@ protected:
     std::vector<LogData> logDataList;
 public:
     /**
+     * @brief Get the number of logged entries.
+     * 
+     * @return int The number of logged entries.
+     */
+    int getLogCount() const {
+        return logDataList.size();
+    }
+
+    /**
      * @brief Log an informational message.
      * 
      * @param message The informational message to log.
@@ -66,7 +75,12 @@ public:
      */
     virtual void clearData() {
         logDataList.clear();
-    };
+    }
+
+    /**
+     * @brief Virtual destructor to ensure proper cleanup in derived classes.
+     */
+    virtual ~ILogger() = default;
 };
 
 

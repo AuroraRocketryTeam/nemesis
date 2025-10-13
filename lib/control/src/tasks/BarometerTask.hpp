@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 
+// If not commented, the Baro1 is used, otherwise Baro2
+#define BARO_1
+
 // Simple moving average filter for noise reduction
 class MovingAverageFilter {
 public:
@@ -44,7 +47,7 @@ private:
 // Median filter for spike rejection (better for outliers than moving average)
 class MedianFilter {
 public:
-    MedianFilter(size_t windowSize = 5) : windowSize(windowSize) {
+    MedianFilter(size_t windowSize) : windowSize(windowSize) {
         buffer.reserve(windowSize);
     }
     
@@ -83,19 +86,17 @@ class BarometerTask : public BaseTask
 {
 public:
     BarometerTask(std::shared_ptr<SharedSensorData> sensorData,
-                  SemaphoreHandle_t sensorDataMutex,
-                  std::shared_ptr<ISensor> baro1,
-                  std::shared_ptr<ISensor> baro2)
+                    SemaphoreHandle_t sensorDataMutex,
+                    std::shared_ptr<bool> isRising,
+                    std::shared_ptr<float> heightGainSpeed,
+                    std::shared_ptr<float> currentHeight)
         : BaseTask("BarometerTask"),
           sensorData(sensorData),
           dataMutex(sensorDataMutex),
-          baro1(baro1 ? baro1.get() : nullptr),
-          baro2(baro2 ? baro2.get() : nullptr)
-    {
-        LOG_INFO("BarometerTask", "Initialized with Barometers: %s, %s",
-                 baro1 ? "OK" : "NULL",
-                 baro2 ? "OK" : "NULL");
-    }
+          isRising(isRising),
+          heightGainSpeed(heightGainSpeed),
+          currentHeight(currentHeight)
+    {}
 
     void taskFunction() override;
 
@@ -103,15 +104,36 @@ public:
     {
         stop();
     }
-
+ 
 private:
     std::shared_ptr<SharedSensorData> sensorData;
     SemaphoreHandle_t dataMutex;
-    ISensor *baro1;
-    ISensor *baro2;
+    std::shared_ptr<bool> isRising;
+    std::shared_ptr<float> heightGainSpeed;
+    std::shared_ptr<float> currentHeight;
+
+    // Maximum altitude reached for easy access in BarometerTask
+    static float max_altitude_read;
     
     // Noise reduction: Median filters reject spikes better than moving average
     // Window size from config.h - tune BAROMETER_FILTER_WINDOW for your needs
-    MedianFilter pressureFilter1{BAROMETER_FILTER_WINDOW};
-    MedianFilter pressureFilter2{BAROMETER_FILTER_WINDOW};
+    MedianFilter pressureFilter{BAROMETER_FILTER_WINDOW};
+
+    // Buffer for tendency filtering, used in isStillRising()
+    std::vector<float> pressureTrendBuffer;
+    size_t trendBufferSize = APOGEE_DETECTION_WINDOW_SIZE;
+    size_t mainDeploymentAltitude = 450; // Altitude for main deployment in meters
+
+    // Called in update to add new values to the filter and remove old ones
+    void addPressureTrendValue(float value) {
+        if (pressureTrendBuffer.size() >= trendBufferSize) {
+            pressureTrendBuffer.erase(pressureTrendBuffer.begin());
+        }
+            
+        pressureTrendBuffer.push_back(value);
+    }
+
+    // If max altitude reached is needed to be retrived
+    float getMaxAltitudeReached() { return max_altitude_read; }
+
 };
