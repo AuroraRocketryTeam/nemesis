@@ -1,0 +1,389 @@
+--- System Information ---
+ESP32 Chip: ESP32-S3
+CPU Frequency: 240 MHz
+Total Heap: 374740 bytes
+Free Heap: 338668 bytes
+PSRAM Total: 8386279 bytes
+PSRAM Free: 8386035 bytes
+Flash Size: 16777216 bytes
+SDK Version: v4.4.7-dirty
+FreeRTOS running on 2 cores
+Tick rate: 1000 Hz
+--- End System Information ---
+[   25436][INFO ][Main] === System initialization complete ===
+[   25436][INFO ][Main] 
+=== Initializing Flight State Machine ===
+[   25436][INFO ][FSM] Constructor called
+[   25436][INFO ][FSM] Sensors received: IMU=OK, Baro1=OK, Baro2=OK, GPS=OK
+[   25437][INFO ][FSM] Constructor completed
+[   25437][INFO ][RocketFSM] Initializing...
+[   25437][INFO ][TaskMgr] Initialized with sensors: IMU=OK, Baro1=OK, Baro2=OK, GPS=OK
+[   25437][INFO ][TaskManager] Creating task instances...
+[   25438][INFO ][GpsTask] Initialized with GPS: OK
+[   25438][INFO ][TaskManager] Created 3 task instances
+[   25438][INFO ][RocketFSM] Setting up state actions...
+[   25439][INFO ][RocketFSM] State actions setup complete
+[   25439][INFO ][RocketFSM] Setting up transitions...
+[   25439][INFO ][RocketFSM] Transitions setup complete
+[   25439][INFO ][RocketFSM] Initialization complete - Free heap: 334120 bytes
+[   26440][INFO ][Test] 
+
+=== STARTING AUTOMATED FSM TEST ===
+[   26440][INFO ][Test] Testing all state transitions with automatic timeouts
+[   26440][INFO ][Test] Will cycle through all states, observing task execution
+
+[   26440][INFO ][RocketFSM] Starting...
+[   26440][INFO ][RocketFSM] Main task started
+[   26440][INFO ][RocketFSM] Event 1 sent successfully
+[   26441][INFO ][RocketFSM] Started successfully
+[   26441][INFO ][RocketFSM] Processing event 1 in state INACTIVE
+[   26441][INFO ][Test] State: INACTIVE (runtime: 26441 ms, uptime: 0.0 sec)
+[   26441][INFO ][RocketFSM] [TRANSITION] INACTIVE -> CALIBRATING
+[   26441][INFO ][TaskManager] Stopping all tasks...
+[   26541][INFO ][TaskManager] All tasks stopped
+[   26641][INFO ][RocketFSM] Entering CALIBRATING
+[   26641][INFO ][TaskManager] Starting task type 0 with config: Sensor_Calib1
+[   26641][INFO ][BaseTask] SensorTask started on core 1
+[   26642][INFO ][TaskManager] Successfully started task: Sensor_Calib1
+[   26642][INFO ][TaskManager] Starting task type 6 with config: Gps_Calib
+[   26642][INFO ][BaseTask] GpsTask started on core 0
+[   26642][INFO ][TaskManager] Successfully started task: Gps_Calib
+[   26642][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 320644 bytes
+[   26642][INFO ][RocketFSM] Loop 0: State=CALIBRATING, Time in state=1 ms
+=== EXTENDED DEBUG [Loop 0] ===
+[   26642][INFO ][BaseTask] [TASK] GpsTask starting on core 0
+Free heap: 320564 bytes (min: 320552)
+[   26643][INFO ][GpsTask] Largest free block: 8257524 bytes
+Task started with stack: 4096 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+[   26643][INFO ][GpsTask] GPS: OK
+Current tick count: 25546
+Uptime: 26643 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   26644][INFO ][BaseTask] [TASK] SensorTask starting on core 1
+[   26644][INFO ][Sensor] Task started with stack: 4096 bytes
+[   26644][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   26714][DEBUG][Sensor] L0: Errors=0, Stack=1912
+[   27441][INFO ][Test] State: CALIBRATING (runtime: 27441 ms, uptime: 1.0 sec)
+[   27643][INFO ][RocketFSM] Loop 20: State=CALIBRATING, Time in state=1002 ms
+=== EXTENDED DEBUG [Loop 20] ===
+Free heap: 316568 bytes (min: 311180)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 26547
+Uptime: 27644 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   28435][INFO ][GpsTask] Got GPS data
+[   28644][INFO ][RocketFSM] Loop 40: State=CALIBRATING, Time in state=2003 ms
+=== EXTENDED DEBUG [Loop 40] ===
+Free heap: 316708 bytes (min: 311052)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 27548
+Uptime: 28645 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   29645][INFO ][RocketFSM] Loop 60: State=CALIBRATING, Time in state=3004 ms
+=== EXTENDED DEBUG [Loop 60] ===
+Free heap: 316120 bytes (min: 310516)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 28549
+Uptime: 29646 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   30314][INFO ][GpsTask] Got GPS data
+[   30646][INFO ][RocketFSM] Loop 80: State=CALIBRATING, Time in state=4005 ms
+=== EXTENDED DEBUG [Loop 80] ===
+Free heap: 316456 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 29550
+Uptime: 30647 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   31647][INFO ][RocketFSM] Loop 100: State=CALIBRATING, Time in state=5006 ms
+=== EXTENDED DEBUG [Loop 100] ===
+Free heap: 316128 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 30551
+Uptime: 31648 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   32411][INFO ][GpsTask] Got GPS data
+[   32648][INFO ][RocketFSM] Loop 120: State=CALIBRATING, Time in state=6007 ms
+=== EXTENDED DEBUG [Loop 120] ===
+Free heap: 316696 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 31552
+Uptime: 32649 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   33649][INFO ][RocketFSM] Loop 140: State=CALIBRATING, Time in state=7008 ms
+=== EXTENDED DEBUG [Loop 140] ===
+Free heap: 316060 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 32553
+Uptime: 33650 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   34395][INFO ][GpsTask] Got GPS data
+[   34650][INFO ][RocketFSM] Loop 160: State=CALIBRATING, Time in state=8009 ms
+=== EXTENDED DEBUG [Loop 160] ===
+Free heap: 316648 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 33554
+Uptime: 34651 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   35651][INFO ][RocketFSM] Loop 180: State=CALIBRATING, Time in state=9010 ms
+=== EXTENDED DEBUG [Loop 180] ===
+Free heap: 316140 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 34555
+Uptime: 35652 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   36374][INFO ][GpsTask] Got GPS data
+[   36435][DEBUG][Sensor] L100: Errors=0, Stack=1912
+[   36652][INFO ][RocketFSM] Loop 200: State=CALIBRATING, Time in state=10011 ms
+=== EXTENDED DEBUG [Loop 200] ===
+Free heap: 316448 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1784 bytes
+Queue messages waiting: 0
+Task count: 11
+Current tick count: 35556
+Uptime: 36653 ms
+State transitions: INACTIVE -> CALIBRATING
+================================
+[   36654][INFO ][RocketFSM] Event 2 sent successfully
+[   36654][INFO ][RocketFSM] Processing event 2 in state CALIBRATING
+[   36654][INFO ][RocketFSM] [TRANSITION] CALIBRATING -> READY_FOR_LAUNCH
+[   36655][INFO ][RocketFSM] Exiting CALIBRATING
+[   36655][INFO ][TaskManager] Stopping all tasks...
+[   36655][INFO ][TaskManager] Stopping task: SensorTask
+[   36724][INFO ][Sensor] Task function exiting
+[   36724][INFO ][Sensor] Task stopped
+[   36724][INFO ][BaseTask] [TASK] SensorTask ended
+[   36755][INFO ][BaseTask] Task SensorTask stopped safely
+[   36755][INFO ][TaskManager] Stopping task: GpsTask
+[   36905][INFO ][BaseTask] Task GpsTask stopped safely
+[   37005][INFO ][TaskManager] All tasks stopped
+[   37105][INFO ][RocketFSM] Entering READY_FOR_LAUNCH
+[   37105][INFO ][TaskManager] Starting task type 0 with config: Sensor_Ready
+[   37106][INFO ][BaseTask] SensorTask started on core 0
+[   37106][INFO ][TaskManager] Successfully started task: Sensor_Ready
+[   37106][INFO ][BaseTask] [TASK] SensorTask starting on core 0
+[   37106][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 321164 bytes
+[   37106][INFO ][Sensor] Task started with stack: 4096 bytes
+[   37107][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   37173][DEBUG][Sensor] L0: Errors=0, Stack=2136
+[   37441][INFO ][Test] State: READY_FOR_LAUNCH (runtime: 37441 ms, uptime: 11.0 sec)
+[   38056][INFO ][RocketFSM] Loop 220: State=READY_FOR_LAUNCH, Time in state=951 ms
+=== EXTENDED DEBUG [Loop 220] ===
+Free heap: 321056 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 36960
+Uptime: 38057 ms
+State transitions: CALIBRATING -> READY_FOR_LAUNCH
+================================
+[   39057][INFO ][RocketFSM] Loop 240: State=READY_FOR_LAUNCH, Time in state=1952 ms
+=== EXTENDED DEBUG [Loop 240] ===
+Free heap: 321152 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 37961
+Uptime: 39058 ms
+State transitions: CALIBRATING -> READY_FOR_LAUNCH
+================================
+[   40058][INFO ][RocketFSM] Loop 260: State=READY_FOR_LAUNCH, Time in state=2953 ms
+=== EXTENDED DEBUG [Loop 260] ===
+Free heap: 321156 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 38962
+Uptime: 40059 ms
+State transitions: CALIBRATING -> READY_FOR_LAUNCH
+================================
+[   41059][INFO ][RocketFSM] Loop 280: State=READY_FOR_LAUNCH, Time in state=3954 ms
+=== EXTENDED DEBUG [Loop 280] ===
+Free heap: 321152 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 39963
+Uptime: 41060 ms
+State transitions: CALIBRATING -> READY_FOR_LAUNCH
+================================
+[   41110][INFO ][RocketFSM] Event 3 sent successfully
+[   41110][INFO ][RocketFSM] Processing event 3 in state READY_FOR_LAUNCH
+[   41111][INFO ][RocketFSM] [TRANSITION] READY_FOR_LAUNCH -> LAUNCH
+[   41111][INFO ][TaskManager] Stopping all tasks...
+[   41111][INFO ][TaskManager] Stopping task: SensorTask
+[   41117][INFO ][Sensor] Task function exiting
+[   41117][INFO ][Sensor] Task stopped
+[   41117][INFO ][BaseTask] [TASK] SensorTask ended
+[   41211][INFO ][BaseTask] Task SensorTask stopped safely
+[   41311][INFO ][TaskManager] All tasks stopped
+[   41411][INFO ][RocketFSM] Entering LAUNCH
+[   41411][INFO ][TaskManager] Starting task type 0 with config: Sensor_Launch
+[   41412][INFO ][BaseTask] SensorTask started on core 0
+[   41412][INFO ][TaskManager] Successfully started task: Sensor_Launch
+[   41412][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 321152 bytes
+[   41412][INFO ][BaseTask] [TASK] SensorTask starting on core 0
+[   41412][INFO ][Sensor] Task started with stack: 4096 bytes
+[   41413][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   41441][INFO ][Test] State: LAUNCH (runtime: 41441 ms, uptime: 15.0 sec)
+[   41480][DEBUG][Sensor] L0: Errors=0, Stack=1944
+[   42312][INFO ][RocketFSM] Loop 300: State=LAUNCH, Time in state=901 ms
+=== EXTENDED DEBUG [Loop 300] ===
+Free heap: 321176 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 41216
+Uptime: 42313 ms
+State transitions: READY_FOR_LAUNCH -> LAUNCH
+================================
+[   42413][INFO ][RocketFSM] Event 4 sent successfully
+[   42414][INFO ][RocketFSM] Processing event 4 in state LAUNCH
+[   42414][INFO ][RocketFSM] [TRANSITION] LAUNCH -> ACCELERATED_FLIGHT
+[   42414][INFO ][TaskManager] Stopping all tasks...
+[   42414][INFO ][TaskManager] Stopping task: SensorTask
+[   42436][INFO ][Sensor] Task function exiting
+[   42436][INFO ][Sensor] Task stopped
+[   42437][INFO ][BaseTask] [TASK] SensorTask ended
+[   42514][INFO ][BaseTask] Task SensorTask stopped safely
+[   42614][INFO ][TaskManager] All tasks stopped
+[   42714][INFO ][RocketFSM] Entering ACCELERATED_FLIGHT
+[   42714][INFO ][TaskManager] Starting task type 0 with config: Sensor_Accel
+[   42715][INFO ][BaseTask] SensorTask started on core 0
+[   42715][INFO ][TaskManager] Successfully started task: Sensor_Accel
+[   42715][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 321152 bytes
+[   42715][INFO ][BaseTask] [TASK] SensorTask starting on core 0
+[   42715][INFO ][Sensor] Task started with stack: 4096 bytes
+[   42716][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   42783][DEBUG][Sensor] L0: Errors=0, Stack=2136
+[   43441][INFO ][Test] State: ACCELERATED_FLIGHT (runtime: 43441 ms, uptime: 17.0 sec)
+[   43565][INFO ][RocketFSM] Loop 320: State=ACCELERATED_FLIGHT, Time in state=851 ms
+=== EXTENDED DEBUG [Loop 320] ===
+Free heap: 321148 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 42469
+Uptime: 43566 ms
+State transitions: LAUNCH -> ACCELERATED_FLIGHT
+================================
+[   44566][INFO ][RocketFSM] Loop 340: State=ACCELERATED_FLIGHT, Time in state=1852 ms
+=== EXTENDED DEBUG [Loop 340] ===
+Free heap: 321148 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1720 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 43470
+Uptime: 44567 ms
+State transitions: LAUNCH -> ACCELERATED_FLIGHT
+================================
+[   44717][INFO ][RocketFSM] Event 5 sent successfully
+[   44718][INFO ][RocketFSM] Processing event 5 in state ACCELERATED_FLIGHT
+[   44718][INFO ][RocketFSM] [TRANSITION] ACCELERATED_FLIGHT -> BALLISTIC_FLIGHT
+[   44718][INFO ][TaskManager] Stopping all tasks...
+[   44718][INFO ][TaskManager] Stopping task: SensorTask
+[   44767][INFO ][Sensor] Task function exiting
+[   44768][INFO ][Sensor] Task stopped
+[   44768][INFO ][BaseTask] [TASK] SensorTask ended
+[   44818][INFO ][BaseTask] Task SensorTask stopped safely
+[   44918][INFO ][TaskManager] All tasks stopped
+[   45018][INFO ][RocketFSM] Entering BALLISTIC_FLIGHT
+[   45018][INFO ][TaskManager] Starting task type 0 with config: Sensor_Ballistic
+[   45019][INFO ][BaseTask] SensorTask started on core 0
+[   45019][INFO ][TaskManager] Successfully started task: Sensor_Ballistic
+[   45019][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 321148 bytes
+[   45019][INFO ][BaseTask] [TASK] SensorTask starting on core 0
+[   45019][INFO ][Sensor] Task started with stack: 4096 bytes
+[   45019][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   45085][DEBUG][Sensor] L0: Errors=0, Stack=1864
+[   45441][INFO ][Test] State: BALLISTIC_FLIGHT (runtime: 45441 ms, uptime: 19.0 sec)
+[   45819][INFO ][RocketFSM] Loop 360: State=BALLISTIC_FLIGHT, Time in state=801 ms
+=== EXTENDED DEBUG [Loop 360] ===
+Free heap: 321164 bytes (min: 310476)
+Largest free block: 8257524 bytes
+Stack high water mark: 1704 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 44723
+Uptime: 45820 ms
+State transitions: ACCELERATED_FLIGHT -> BALLISTIC_FLIGHT
+================================
+---- Closed the serial port /dev/ttyACM0 ----
+---- Opened the serial port /dev/ttyACM0 ----
+---- Closed the serial port /dev/ttyACM0 ----
+---- Opened the serial port /dev/ttyACM0 ----
+[   44293][INFO ][RocketFSM] Event 5 sent successfully
+[   44293][INFO ][RocketFSM] Processing event 5 in state ACCELERATED_FLIGHT
+[   44293][INFO ][RocketFSM] [TRANSITION] ACCELERATED_FLIGHT -> BALLISTIC_FLIGHT
+[   44293][INFO ][TaskManager] Stopping all tasks...
+[   44293][INFO ][TaskManager] Stopping task: SensorTask
+[   44392][INFO ][BaseTask] Task SensorTask stopped safely
+[   44492][INFO ][TaskManager] All tasks stopped
+[   44592][INFO ][RocketFSM] Entering BALLISTIC_FLIGHT
+[   44593][INFO ][TaskManager] Starting task type 0 with config: Sensor_Ballistic
+[   44593][INFO ][BaseTask] SensorTask started on core 0
+[   44593][INFO ][TaskManager] Successfully started task: Sensor_Ballistic
+[   44593][INFO ][RocketFSM] [TRANSITION] Complete - Free heap: 321184 bytes
+[   44594][INFO ][BaseTask] [TASK] SensorTask starting on core 0
+[   44594][INFO ][Sensor] Task started with stack: 4096 bytes
+[   44594][INFO ][Sensor] Sensors: IMU=OK, Baro1=OK, Baro2=OK
+[   44660][DEBUG][Sensor] L0: Errors=0, Stack=2136
+[   44891][INFO ][Test] State: BALLISTIC_FLIGHT (runtime: 44891 ms, uptime: 19.0 sec)
+[   45243][INFO ][RocketFSM] Loop 360: State=BALLISTIC_FLIGHT, Time in state=651 ms
+=== EXTENDED DEBUG [Loop 360] ===
+Free heap: 321160 bytes (min: 310528)
+Largest free block: 8257524 bytes
+Stack high water mark: 1832 bytes
+Queue messages waiting: 0
+Task count: 10
+Current tick count: 44180
+Uptime: 45245 ms
+State transitions: ACCELERATED_FLIGHT -> BALLISTIC_FLIGHT
+================================
