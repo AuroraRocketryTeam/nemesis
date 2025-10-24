@@ -50,8 +50,8 @@ private:
     std::shared_ptr<SD> sd;
 
     // Important timers and tresholds
-    const unsigned long LAUNCH_TO_BALLISTIC_THRESHOLD = 5300;
-    const unsigned long LAUNCH_TO_APOGEE_THRESHOLD = 25350; //24850 + 500 = 25350
+    const unsigned long LAUNCH_TO_BALLISTIC_THRESHOLD = 7000; //5300;
+    const unsigned long LAUNCH_TO_APOGEE_THRESHOLD = 27000; //24850 + 500 = 25350
     unsigned long launchDetectionTime = 0;
 
 

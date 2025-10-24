@@ -736,38 +736,12 @@ void RocketFSM::checkTransitions()
         {
             sendEvent(FSMEvent::ACCELERATION_COMPLETE);
         }
-
-        //LOG_INFO("ACC_FLIGHT", "Checking condition");
-        /*if (accOpt.has_value() && std::holds_alternative<std::map<std::string, float>>(accOpt.value()))
-        {
-            const auto &accMap = std::get<std::map<std::string, float>>(accOpt.value());
-            auto accVal = accMap.at("magnitude");
-
-            LOG_INFO("RocketFSM", "ACCELERATED_FLIGHT: accelZ=%.3f", accVal);
-            // Detect sustained deceleration to switch to ballistic
-            if (accVal <= 0)
-            {
-                if (decelSince == 0)
-                {
-                    decelSince = millis();
-                }
-                else if (millis() - decelSince > 200U)
-                {
-                    sendEvent(FSMEvent::ACCELERATION_COMPLETE);
-                    decelSince = 0;
-                }
-            }
-            else
-            {
-                decelSince = 0;
-            }
-        } */
         break;
 
     case RocketState::BALLISTIC_FLIGHT:
     {
         //LOG_INFO("RocketFSM", "BALLISTIC_FLIGHT: is rising = %u", *isRising);
-        if(!*isRising){
+        if(/*!*isRising ||*/ millis() - launchDetectionTime >= LAUNCH_TO_APOGEE_THRESHOLD){
             sendEvent(FSMEvent::APOGEE_REACHED);
         }
 
@@ -775,6 +749,7 @@ void RocketFSM::checkTransitions()
     }
 
     case RocketState::APOGEE:
+        LOG_INFO("RocketFSM", "Drogue Opened! %d", millis()-launchDetectionTime);
         if (millis() - stateStartTime > DROGUE_APOGEE_TIMEOUT)
         {
             sendEvent(FSMEvent::DROGUE_READY);
