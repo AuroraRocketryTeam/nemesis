@@ -18,22 +18,24 @@ void EkfTask::taskFunction() {
         // Check early exit
         if (!running) break;
 
-        SensorData imuCopy("imu");
-        SensorData baro1Copy("baro1");
-        SensorData baro2Copy("baro2");
-        SensorData gpsCopy("gps");
+        std::shared_ptr<BNO055Data> imuDataCopy = std::make_shared<BNO055Data>();
+        std::shared_ptr<MS561101BA03Data> baro1DataCopy = std::make_shared<MS561101BA03Data>();
+        std::shared_ptr<MS561101BA03Data> baro2DataCopy = std::make_shared<MS561101BA03Data>();
+        std::shared_ptr<LIS3DHTRData> lisDataCopy = std::make_shared<LIS3DHTRData>();
+        std::shared_ptr<GPSData> gpsDataCopy = std::make_shared<GPSData>();
         uint32_t dataTimeStamp = 0;
 
         // Try to take the mutex quickly; if unavailable, skip this cycle to avoid deadlock
-        if (xSemaphoreTake(sensorDataMutex, mutexTimeout) == pdTRUE)
+        if (xSemaphoreTake(_modelMutex, mutexTimeout) == pdTRUE)
         {
-            imuCopy = sensorData->imuData;
-            baro1Copy = sensorData->baroData1;
-            baro2Copy = sensorData->baroData2;
-            gpsCopy = sensorData->gpsData;
-            dataTimeStamp = sensorData->timestamp;
+            imuDataCopy = _model->getBNO055Data();
+            baro1DataCopy = _model->getMS561101BA03Data_1();
+            baro2DataCopy = _model->getMS561101BA03Data_2();
+            lisDataCopy = _model->getLIS3DHTRData();
+            gpsDataCopy = _model->getGPSData();
+            dataTimeStamp = millis();
 
-            xSemaphoreGive(sensorDataMutex);
+            xSemaphoreGive(_modelMutex);
         }
         else
         {
@@ -51,83 +53,30 @@ void EkfTask::taskFunction() {
         float baro2Pressure = 0.0f;
         float gpsAltitude = 0.0f;
 
-        bool validInputs = true;
+        auto orientation_x = imuDataCopy->orientation_x;
+        auto orientation_y = imuDataCopy->orientation_y;
+        auto orientation_z = imuDataCopy->orientation_z;
 
-        auto orientOpt = imuCopy.getData("orientation");
-        if (orientOpt.has_value() && std::holds_alternative<std::map<std::string, float>>(orientOpt.value()))
-        {
-            const auto &orientationMap = std::get<std::map<std::string, float>>(orientOpt.value());
-            omega[0] = orientationMap.count("x") ? orientationMap.at("x") : 0.0f;
-            omega[1] = orientationMap.count("y") ? orientationMap.at("y") : 0.0f;
-            omega[2] = orientationMap.count("z") ? orientationMap.at("z") : 0.0f;
-        }
-        else
-        {
-            validInputs = false;
-        }
+        auto acceleration_x = lisDataCopy->acceleration_x;
+        auto acceleration_y = lisDataCopy->acceleration_y;
+        auto acceleration_z = lisDataCopy->acceleration_z;
 
-        auto accelOpt = imuCopy.getData("accelerometer");
-        if (accelOpt.has_value() && std::holds_alternative<std::map<std::string, float>>(accelOpt.value()))
-        {
-            const auto &accelMap = std::get<std::map<std::string, float>>(accelOpt.value());
-            accel[0] = accelMap.count("x") ? accelMap.at("x") : 0.0f;
-            accel[1] = accelMap.count("y") ? accelMap.at("y") : 0.0f;
-            accel[2] = accelMap.count("z") ? accelMap.at("z") : 0.0f;
-        }
-        else
-        {
-            validInputs = false;
-        }
+        auto pressure1 = baro1DataCopy->pressure;
+        auto pressure2 = baro2DataCopy->pressure;
 
-        auto b1Opt = baro1Copy.getData("pressure");
-        if (b1Opt.has_value() && std::holds_alternative<float>(b1Opt.value()))
-        {
-            baro1Pressure = std::get<float>(b1Opt.value());
-        }
-        else
-        {
-            validInputs = false;
-        }
+        auto altitude = gpsDataCopy->altitude;
 
-        auto b2Opt = baro2Copy.getData("pressure");
-        if (b2Opt.has_value() && std::holds_alternative<float>(b2Opt.value()))
-        {
-            baro2Pressure = std::get<float>(b2Opt.value());
-        }
-        else
-        {
-            validInputs = false;
-        }
-
-        auto gpsOpt = gpsCopy.getData("altitude");
-        if (gpsOpt.has_value() && std::holds_alternative<float>(gpsOpt.value()))
-        {
-            gpsAltitude = std::get<float>(gpsOpt.value());
-        }
-        else
-        {
-            // GPS may be temporarily unavailable; allow EKF to run with barometer only
-            gpsAltitude = 0.0f;
-        }
-
-        if (!validInputs)
-        {
-            // Skip this cycle rather than passing garbage to the EKF
-            vTaskDelay(pdMS_TO_TICKS(5));
-            continue;
-        }
-        
         if (!running) break; // Check before heavy computation
 
         // Compute elapsed time in seconds. On first run, set a small default dt.
         float elapsed = 0.01f;
-        if (lastTimestamp != 0 && dataTimeStamp > lastTimestamp)
+        if (_lastTimestamp != 0 && dataTimeStamp > _lastTimestamp)
         {
-            elapsed = static_cast<float>(dataTimeStamp - lastTimestamp) / 1000.0f;
+            elapsed = static_cast<float>(dataTimeStamp - _lastTimestamp) / 1000.0f;
         }
 
         // Run the EKF step
-        kalmanFilter->step(elapsed,
+        _kalmanFilter->step(elapsed,
                            omega,
                            accel,
                            (baro1Pressure + baro2Pressure) / 2.0f,
@@ -136,7 +85,7 @@ void EkfTask::taskFunction() {
         // Check for filter stability periodically (not every loop)
         if ((loopCounter++ & 0x0F) == 0)
         {
-            float *currentState = kalmanFilter->state();
+            float *currentState = _kalmanFilter->state();
             bool diverged = false;
             for (int j = 0; j < EKF_N; j++)
             {
@@ -152,13 +101,13 @@ void EkfTask::taskFunction() {
             }
         }
         LOG_DEBUG("EkfTask", "EKF State: pos=%.2f vel=%.2f q=[%.3f, %.3f, %.3f, %.3f]",
-                  kalmanFilter->state()[0],
-                  kalmanFilter->state()[1],
-                  kalmanFilter->state()[2],
-                  kalmanFilter->state()[3],
-                  kalmanFilter->state()[4],
-                  kalmanFilter->state()[5]);
-        lastTimestamp = dataTimeStamp;
+                  _kalmanFilter->state()[0],
+                  _kalmanFilter->state()[1],
+                  _kalmanFilter->state()[2],
+                  _kalmanFilter->state()[3],
+                  _kalmanFilter->state()[4],
+                  _kalmanFilter->state()[5]);
+        _lastTimestamp = dataTimeStamp;
 
         // Split delay for faster exit response (4x5ms = 20ms total)
         for (int i = 0; i < 4 && running; i++)

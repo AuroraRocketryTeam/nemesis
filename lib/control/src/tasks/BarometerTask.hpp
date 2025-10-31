@@ -4,6 +4,7 @@
 #include <MS561101BA03.hpp>
 #include <Logger.hpp>
 #include <SharedData.hpp>
+#include <Nemesis.hpp>
 #include <config.h>
 #include <vector>
 #include <algorithm>
@@ -82,20 +83,16 @@ private:
     std::vector<float> buffer;
 };
 
+// The whole point of this class is not to deal directly with barometers, refactory needed!!!
 class BarometerTask : public BaseTask
 {
 public:
-    BarometerTask(std::shared_ptr<SharedSensorData> sensorData,
-                    SemaphoreHandle_t sensorDataMutex,
-                    std::shared_ptr<bool> isRising,
-                    std::shared_ptr<float> heightGainSpeed,
-                    std::shared_ptr<float> currentHeight)
+    BarometerTask(std::shared_ptr<Nemesis> model,
+                    SemaphoreHandle_t modelMutex)
         : BaseTask("BarometerTask"),
-          sensorData(sensorData),
-          dataMutex(sensorDataMutex),
-          isRising(isRising),
-          heightGainSpeed(heightGainSpeed),
-          currentHeight(currentHeight)
+          _model(model),
+          _modelMutex(modelMutex),
+          _max_altitude_read(-1000.0f) // This third parameter should be probably removed!!!
     {}
 
     void taskFunction() override;
@@ -106,14 +103,11 @@ public:
     }
  
 private:
-    std::shared_ptr<SharedSensorData> sensorData;
-    SemaphoreHandle_t dataMutex;
-    std::shared_ptr<bool> isRising;
-    std::shared_ptr<float> heightGainSpeed;
-    std::shared_ptr<float> currentHeight;
+    std::shared_ptr<Nemesis> _model;
+    SemaphoreHandle_t _modelMutex;
 
     // Maximum altitude reached for easy access in BarometerTask
-    static float max_altitude_read;
+    float _max_altitude_read;
     
     // Noise reduction: Median filters reject spikes better than moving average
     // Window size from config.h - tune BAROMETER_FILTER_WINDOW for your needs
@@ -134,6 +128,6 @@ private:
     }
 
     // If max altitude reached is needed to be retrived
-    float getMaxAltitudeReached() { return max_altitude_read; }
+    float getMaxAltitudeReached() { return _max_altitude_read; }
 
 };

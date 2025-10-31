@@ -1,13 +1,16 @@
 #pragma once
 
 #include "BaseTask.hpp"
-#include "SharedData.hpp"
+#include <Nemesis.hpp>
 #include "EspNowTransmitter.hpp"
 #include "Logger.hpp"
 #include <Packet.hpp>
 #include <PacketManager.hpp>
 #include <memory>
 #include <cstdint>
+#include "esp_task_wdt.h"
+#include <Arduino.h>
+#include <config.h>
 
 /**
  * @brief Binary telemetry packet structure for efficient transmission.
@@ -61,17 +64,17 @@ struct TelemetryPacket
 class TelemetryTask : public BaseTask
 {
 private:
-    std::shared_ptr<SharedSensorData> sensorData;
-    SemaphoreHandle_t dataMutex;
-    std::shared_ptr<EspNowTransmitter> transmitter;
+    std::shared_ptr<Nemesis> _model;
+    SemaphoreHandle_t _modelMutex;
+    std::shared_ptr<EspNowTransmitter> _transmitter;
 
-    uint32_t transmitIntervalMs;
-    uint32_t lastTransmitTime;
+    uint32_t _transmitIntervalMs;
+    uint32_t _lastTransmitTime;
 
     // Statistics
-    uint32_t messagesCreated;
-    uint32_t packetsSent;
-    uint32_t transmitErrors;
+    uint32_t _messagesCreated;
+    uint32_t _packetsSent;
+    uint32_t _transmitErrors;
 
 public:
     /**
@@ -82,8 +85,8 @@ public:
      * @param espNowTransmitter ESP-NOW transmitter instance.
      * @param intervalMs Interval between transmissions in milliseconds (default 1000ms = 1Hz).
      */
-    TelemetryTask(std::shared_ptr<SharedSensorData> sensorData,
-                  SemaphoreHandle_t mutex,
+    TelemetryTask(std::shared_ptr<Nemesis> model,
+                  SemaphoreHandle_t modelMutex,
                   std::shared_ptr<EspNowTransmitter> espNowTransmitter,
                   uint32_t intervalMs = 1000);
 

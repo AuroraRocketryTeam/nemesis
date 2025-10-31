@@ -1,5 +1,19 @@
 #include "GpsTask.hpp"
 
+GpsTask::GpsTask(std::shared_ptr<Nemesis> model,
+            SemaphoreHandle_t modelMutex,
+            std::shared_ptr<RocketLogger> logger, 
+            SemaphoreHandle_t loggerMutex
+        )
+        : BaseTask("GpsTask"),
+          _model(model),
+          _modelMutex(modelMutex),
+          _logger(logger),
+          _loggerMutex(loggerMutex)
+    {
+        LOG_INFO("GpsTask", "Initialized GPS task");
+    }
+
 void GpsTask::taskFunction()
 {
     const TickType_t mutexTimeout = pdMS_TO_TICKS(10);
@@ -7,58 +21,37 @@ void GpsTask::taskFunction()
     while (running)
     {
         esp_task_wdt_reset();
-        if (gps)
-        {
-            auto gpsData = gps->getData();
-            // Write to shared data
-            if (gpsData.has_value())
-            {
-                if (dataMutex && xSemaphoreTake(dataMutex, mutexTimeout) == pdTRUE)
-                {
-                    sensorData->gpsData = gpsData.value();
-                    LOG_INFO("GpsTask", "Got GPS data");
-                    xSemaphoreGive(dataMutex);
-                    if ((loopCounter & 0x0F) == 0)
-                        LOG_INFO("GpsTask", "GPS update stored");
-                }
-                else
-                {
-                    if ((loopCounter & 0x0F) == 0)
-                        LOG_WARNING("GpsTask", "Failed to take data mutex");
-                }
-                
-                if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                    // Only log GPS data every 10 loops (every ~2 seconds) to reduce memory pressure
-                    if ((loopCounter % 10) == 0) {
-                        auto timestampData = SensorData("Timestamp");
-                        timestampData.setData("timestamp", static_cast<int>(millis()));
-                        rocketLogger->logSensorData(timestampData);
-                        
-                        rocketLogger->logSensorData("GPS", gpsData.value());
-                        
-                        // Log current RocketLogger memory usage for monitoring
-                        if ((loopCounter % 50) == 0) {
-                            LOG_INFO("GpsTask", "RocketLogger entries: %d", rocketLogger->getLogCount());
-                        }
-                    }
-                    xSemaphoreGive(loggerMutex);
-                } else {
-                    LOG_WARNING("GpsTask", "Failed to take logger mutex");
-                }
 
-            }
-            else
-            {
-                // GPS fix or data might be temporarily unavailable; log sparsely
-                if ((loopCounter & 0x3F) == 0)
-                    LOG_WARNING("GpsTask", "No GPS data available");
-            }
+        _model->updateGPS();
+        std::shared_ptr<GPSData> gpsData = nullptr;
+        
+        if (_modelMutex && xSemaphoreTake(_modelMutex, mutexTimeout) == pdTRUE)
+        {
+            gpsData = _model->getGPSData();
+
+            LOG_INFO("GpsTask", "Got GPS data");
+            xSemaphoreGive(_modelMutex);
         }
         else
         {
-            // Sensor missing - this is likely a configuration issue; log less frequently
-            if ((loopCounter & 0x3F) == 0)
-                LOG_WARNING("GpsTask", "No GPS sensor available");
+            if ((loopCounter & 0x0F) == 0)
+                LOG_WARNING("GpsTask", "Failed to take data mutex");
+        }
+        
+        if (xSemaphoreTake(_loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // Only log GPS data every 10 loops (every ~2 seconds) to reduce memory pressure
+            if ((loopCounter % 10) == 0) {
+
+                _logger->logSensorData(gpsData);
+
+                // Log current RocketLogger memory usage for monitoring
+                if ((loopCounter % 50) == 0) {
+                    LOG_INFO("GpsTask", "RocketLogger entries: %d", _logger->getLogCount());
+                }
+            }
+            xSemaphoreGive(_loggerMutex);
+        } else {
+            LOG_WARNING("GpsTask", "Failed to take logger mutex");
         }
 
         loopCounter++;
@@ -75,7 +68,6 @@ void GpsTask::taskFunction()
 void GpsTask::onTaskStart()
 {
     LOG_INFO("GpsTask", "Task started with stack: %u bytes", config.stackSize);
-    LOG_INFO("GpsTask", "GPS: %s", gps ? "OK" : "NULL");
 }
 
 void GpsTask::onTaskStop()

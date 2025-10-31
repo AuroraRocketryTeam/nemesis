@@ -1,43 +1,23 @@
 #include "SensorTask.hpp"
 #include "esp_task_wdt.h"
 
-SensorTask::SensorTask(std::shared_ptr<SharedSensorData> sensorData,
-                       SemaphoreHandle_t mutex,
-                       std::shared_ptr<ISensor> imu,
-                       std::shared_ptr<ISensor> barometer1,
-                       std::shared_ptr<ISensor> barometer2,
-                       std::shared_ptr<RocketLogger> rocketLogger, 
+SensorTask::SensorTask(std::shared_ptr<Nemesis> model,
+                       SemaphoreHandle_t modelMutex,
+                       std::shared_ptr<RocketLogger> logger, 
                        SemaphoreHandle_t loggerMutex)
     : BaseTask("SensorTask"), 
-    sensorData(sensorData), dataMutex(mutex),
-    rocketLogger(rocketLogger), loggerMutex(loggerMutex)
+      model(model), 
+      modelMutex(modelMutex),
+      logger(logger), 
+      loggerMutex(loggerMutex)
 {
-    bno055 = imu.get();
-    baro1 = barometer1.get();
-    baro2 = barometer2.get();
-
-    LOG_INFO("Sensor", "Raw pointers: IMU=%p, B1=%p, B2=%p",
-             static_cast<void *>(bno055),
-             static_cast<void *>(baro1),
-             static_cast<void *>(baro2));
-}
-
-void SensorTask::setSensors(std::shared_ptr<ISensor> imu,
-                            std::shared_ptr<ISensor> barometer1,
-                            std::shared_ptr<ISensor> barometer2)
-{
-    bno055 = imu.get();
-    baro1 = barometer1.get();
-    baro2 = barometer2.get();
+    LOG_INFO("Sensor", "SensorTask constructor initialized");
 }
 
 void SensorTask::onTaskStart()
 {
     LOG_INFO("Sensor", "Task started with stack: %u bytes", config.stackSize);
-    LOG_INFO("Sensor", "Sensors: IMU=%s, Baro1=%s, Baro2=%s",
-             bno055 ? "OK" : "NULL",
-             baro1 ? "OK" : "NULL",
-             baro2 ? "OK" : "NULL");
+    LOG_INFO("Sensor", "Model pointer: %s", model ? "OK" : "NULL");
 }
 
 void SensorTask::onTaskStop()
@@ -54,75 +34,27 @@ void SensorTask::taskFunction()
         // CRITICAL: Reset the watchdog every loop (watchdog created in BaseTask)
         esp_task_wdt_reset();
         LOG_INFO("SensorTask", "READING SENSORS");
+        
         // Check running flag early to exit quickly during shutdown
         if (!running) break;
         
-        if (bno055)
+        // Update sensors through the model with mutex protection
+        if (model && xSemaphoreTake(modelMutex, pdMS_TO_TICKS(10)) == pdTRUE)
         {
-            auto imuData = bno055->getData();
-            if (imuData && running) // Check before mutex
-            {
-                if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-                {
-                    sensorData->imuData = *imuData;
-                    LOG_DEBUG("Sensor", "Read IMU data");
-                    xSemaphoreGive(dataMutex);
-                }
-                else
-                {
-                    LOG_WARNING("Sensor", "Failed to take data mutex for IMU");
-                }
-            }
+            model->updateBNO055();
+            model->updateMS561101BA03_1();
+            model->updateMS561101BA03_2();
+            model->updateLIS3DHTR();
+            
+            xSemaphoreGive(modelMutex);
+            LOG_DEBUG("Sensor", "Updated all sensors");
         }
-        
-        if (!running) break; // Check between sensors
-        
-        if (baro1)
+        else
         {
-            auto baroData1 = baro1->getData();
-            if (baroData1 && running)
-            {
-                if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-                {
-                    sensorData->baroData1 = *baroData1;
-                    LOG_DEBUG("Sensor", "Read Baro1 data");
-                    LOG_DEBUG("Sensor", "Baro1 pressure: %.2f hPa", std::get<float>(baroData1->getData("pressure").value()));
-                    xSemaphoreGive(dataMutex);
-                }
-                else
-                {
-                    LOG_WARNING("Sensor", "Failed to take data mutex for Baro1");
-                }
-            }
+            LOG_WARNING("Sensor", "Failed to take model mutex");
         }
         
         if (!running) break;
-            if (baro2)
-            {
-            auto baroData2 = baro2->getData();
-                if (baroData2 && running)
-                {
-                    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-                    {
-                        sensorData->baroData2 = *baroData2;
-                        LOG_DEBUG("Sensor", "Read Baro2 data");
-                        xSemaphoreGive(dataMutex);
-                    }
-                    else
-                    {
-                    LOG_WARNING("Sensor", "Failed to take data mutex for Baro2");
-                }
-           }
-        }
-        
-        if (!running) break;
-        
-        if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE)
-        {
-            sensorData->timestamp = esp_timer_get_time();
-            LOG_DEBUG("Sensor", "Updated timestamp");
-            xSemaphoreGive(dataMutex);
-        }
 
         // Log memory usage every 10 loops
         if (loopCount % 10 == 0)
@@ -138,26 +70,35 @@ void SensorTask::taskFunction()
             }
         }
 
-        // Only log every 50 loops (every ~5 seconds) instead of every loop
-        if (loopCount % 3 == 0 && xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE)
+        // Log sensor data every 3 loops if logger is available
+        if (logger && loopCount % 3 == 0 && xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(10)) == pdTRUE)
         {
-            auto timestampData = SensorData("Timestamp");
-            timestampData.setData("timestamp", static_cast<int>(millis()));
-            rocketLogger->logSensorData(timestampData);
-
-            // Create a copy of sensorData under mutex to avoid pointer issues
-            auto imuCopy = sensorData->imuData;
-            auto baro1Copy = sensorData->baroData1;
-            auto baro2Copy = sensorData->baroData2;
+            // Log sensor data through the model
+            if (model)
+            {
+                auto bnoData = model->getBNO055Data();
+                auto ms56Data1 = model->getMS561101BA03Data_1();
+                auto ms56Data2 = model->getMS561101BA03Data_2();
+                auto lis3dhData = model->getLIS3DHTRData();
+                
+                if (bnoData) {
+                    logger->logSensorData(bnoData);
+                }
+                if (ms56Data1) {
+                    logger->logSensorData(ms56Data1);
+                }
+                if (ms56Data2) {
+                    logger->logSensorData(ms56Data2);
+                }
+                if (lis3dhData) {
+                    logger->logSensorData(lis3dhData);
+                }
+            }
             
-            rocketLogger->logSensorData(imuCopy);
-            rocketLogger->logSensorData(baro1Copy);
-            rocketLogger->logSensorData(baro2Copy);
-
             xSemaphoreGive(loggerMutex);
             
             // Log current RocketLogger memory usage for monitoring
-            LOG_INFO("Sensor", "RocketLogger entries: %d", rocketLogger->getLogCount());
+            LOG_INFO("Sensor", "RocketLogger entries logged");
         }
 
         loopCount++;

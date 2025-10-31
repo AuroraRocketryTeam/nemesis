@@ -1,7 +1,4 @@
 #include "TelemetryTask.hpp"
-#include "esp_task_wdt.h"
-#include <Arduino.h>
-#include <config.h>
 
 constexpr float TROPOSPHERE_HEIGHT = 11000.f; // Troposphere height [m]
 constexpr float a = 0.0065f;                  // Troposphere temperature gradient [deg/m]
@@ -15,35 +12,35 @@ float relAltitude_tele(float pressure, float pressureRef = 99725.0f,
     return temperatureRef / a * (1 - powf(pressure / pressureRef, nInv));
 }
 
-TelemetryTask::TelemetryTask(std::shared_ptr<SharedSensorData> sensorData,
-                             SemaphoreHandle_t mutex,
+TelemetryTask::TelemetryTask(std::shared_ptr<Nemesis> model,
+                             SemaphoreHandle_t modelMutex,
                              std::shared_ptr<EspNowTransmitter> espNowTransmitter,
                              uint32_t intervalMs)
     : BaseTask("TelemetryTask"),
-      sensorData(sensorData),
-      dataMutex(mutex),
-      transmitter(espNowTransmitter),
-      transmitIntervalMs(intervalMs),
-      lastTransmitTime(0),
-      messagesCreated(0),
-      packetsSent(0),
-      transmitErrors(0)
+      _model(model),
+      _modelMutex(modelMutex),
+      _transmitter(espNowTransmitter),
+      _transmitIntervalMs(intervalMs),
+      _lastTransmitTime(0),
+      _messagesCreated(0),
+      _packetsSent(0),
+      _transmitErrors(0)
 {
-    LOG_INFO("Telemetry", "Created with transmit interval: %lu ms", transmitIntervalMs);
+    LOG_INFO("Telemetry", "Created with transmit interval: %lu ms", _transmitIntervalMs);
     LOG_INFO("Telemetry", "Telemetry packet size: %d bytes", sizeof(TelemetryPacket));
 }
 
 void TelemetryTask::onTaskStart()
 {
     LOG_INFO("Telemetry", "Task started with stack: %u bytes", config.stackSize);
-    LOG_INFO("Telemetry", "Transmitter: %s", transmitter ? "OK" : "NULL");
-    lastTransmitTime = millis();
+    LOG_INFO("Telemetry", "Transmitter: %s", _transmitter ? "OK" : "NULL");
+    _lastTransmitTime = millis();
 }
 
 void TelemetryTask::onTaskStop()
 {
     LOG_INFO("Telemetry", "Task stopped - Stats: messages=%lu, packets=%lu, errors=%lu",
-             messagesCreated, packetsSent, transmitErrors);
+             _messagesCreated, _packetsSent, _transmitErrors);
 }
 
 void TelemetryTask::taskFunction()
@@ -61,9 +58,9 @@ void TelemetryTask::taskFunction()
         uint32_t now = millis();
 
         // Check if it's time to transmit
-        if (now - lastTransmitTime >= transmitIntervalMs)
+        if (now - _lastTransmitTime >= _transmitIntervalMs)
         {
-            lastTransmitTime = now;
+            _lastTransmitTime = now;
 
             // Collect sensor data into binary packet
             TelemetryPacket packet;
@@ -78,13 +75,13 @@ void TelemetryTask::taskFunction()
                 // Transmit message
                 if (transmitMessage(message))
                 {
-                    messagesCreated++;
-                    LOG_INFO("Telemetry", "Packet %lu transmitted successfully", messagesCreated);
+                    _messagesCreated++;
+                    LOG_INFO("Telemetry", "Packet %lu transmitted successfully", _messagesCreated);
                 }
                 else
                 {
-                    transmitErrors++;
-                    LOG_WARNING("Telemetry", "Failed to transmit packet (errors: %lu)", transmitErrors);
+                    _transmitErrors++;
+                    LOG_WARNING("Telemetry", "Failed to transmit packet (errors: %lu)", _transmitErrors);
                 }
             }
         }
@@ -93,18 +90,18 @@ void TelemetryTask::taskFunction()
         if (loopCount % 10 == 0 && loopCount > 0)
         {
             uint32_t txSent, txFailed;
-            if (transmitter)
+            if (_transmitter)
             {
-                transmitter->getStats(txSent, txFailed);
+                _transmitter->getStats(txSent, txFailed);
                 LOG_INFO("Telemetry", "Stats: msgs=%lu, pkts=%lu, tx_ok=%lu, tx_fail=%lu, heap=%u",
-                         messagesCreated, packetsSent, txSent, txFailed, ESP.getFreeHeap());
+                         _messagesCreated, _packetsSent, txSent, txFailed, ESP.getFreeHeap());
             }
         }
 
         loopCount++;
 
         // Check running flag frequently during delay (50ms chunks)
-        uint32_t delayRemaining = transmitIntervalMs / 10; // Split into 10 chunks
+        uint32_t delayRemaining = _transmitIntervalMs / 10; // Split into 10 chunks
         if (delayRemaining < 10)
             delayRemaining = 10;
 
@@ -117,13 +114,13 @@ void TelemetryTask::taskFunction()
 
 bool TelemetryTask::collectSensorData(TelemetryPacket &packet)
 {
-    if (!sensorData || !dataMutex)
+    if (!_model || !_modelMutex)
     {
         return false;
     }
 
     // Take mutex with timeout
-    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) != pdTRUE)
+    if (xSemaphoreTake(_modelMutex, pdMS_TO_TICKS(10)) != pdTRUE)
     {
         LOG_WARNING("Telemetry", "Failed to acquire data mutex");
         return false;
@@ -135,96 +132,60 @@ bool TelemetryTask::collectSensorData(TelemetryPacket &packet)
         memset(&packet, 0, sizeof(TelemetryPacket));
 
         // Add timestamp and validity
-        packet.timestamp = sensorData->timestamp;
+        packet.timestamp = millis();
         packet.dataValid = true;
 
+        auto bno055Data = _model->getBNO055Data();
+
         // IMU data - accelerometer
-        auto accelOpt = sensorData->imuData.getData("accelerometer");
-        if (accelOpt.has_value() && std::holds_alternative<std::map<std::string, float>>(accelOpt.value()))
-        {
-            const auto &accelMap = std::get<std::map<std::string, float>>(accelOpt.value());
-            packet.imu.accel_x = accelMap.count("x") ? accelMap.at("x") : 0.0f;
-            packet.imu.accel_y = accelMap.count("y") ? accelMap.at("y") : 0.0f;
-            packet.imu.accel_z = accelMap.count("z") ? accelMap.at("z") : 0.0f;
-        }
+        packet.imu.accel_x = bno055Data->acceleration_x;
+        packet.imu.accel_y = bno055Data->acceleration_y;
+        packet.imu.accel_z = bno055Data->acceleration_z;
         LOG_DEBUG("Telemetry", "ACC_X: %.2f, ACC_Y: %.2f, ACC_Z: %.2f", packet.imu.accel_x, packet.imu.accel_y, packet.imu.accel_z);
 
         // IMU data - gyroscope (orientation)
-        auto gyroOpt = sensorData->imuData.getData("orientation");
-        if (gyroOpt.has_value() && std::holds_alternative<std::map<std::string, float>>(gyroOpt.value()))
-        {
-            const auto &gyroMap = std::get<std::map<std::string, float>>(gyroOpt.value());
-            packet.imu.gyro_x = gyroMap.count("x") ? gyroMap.at("x") : 0.0f;
-            packet.imu.gyro_y = gyroMap.count("y") ? gyroMap.at("y") : 0.0f;
-            packet.imu.gyro_z = gyroMap.count("z") ? gyroMap.at("z") : 0.0f;
-        }
+        packet.imu.gyro_x = bno055Data->orientation_x;
+        packet.imu.gyro_y = bno055Data->orientation_y;
+        packet.imu.gyro_z = bno055Data->orientation_z;
 
         // Barometer 1
-        auto baro1PressOpt = sensorData->baroData1.getData("pressure");
-        if (baro1PressOpt.has_value() && std::holds_alternative<float>(baro1PressOpt.value()))
-        {
-            packet.baro1.pressure = std::get<float>(baro1PressOpt.value());
-        }
-
-        auto baro1TempOpt = sensorData->baroData1.getData("temperature");
-        if (baro1TempOpt.has_value() && std::holds_alternative<float>(baro1TempOpt.value()))
-        {
-            packet.baro1.temperature = std::get<float>(baro1TempOpt.value());
-        }
+        auto baro1Data = _model->getMS561101BA03Data_1();
+        
+        packet.baro1.pressure = baro1Data->pressure;
+        packet.baro1.temperature = baro1Data->temperature;
 
         // Barometer 2
-        auto baro2PressOpt = sensorData->baroData2.getData("pressure");
-        float alt;
-        if (baro2PressOpt.has_value() && std::holds_alternative<float>(baro2PressOpt.value()))
-        {
-            packet.baro2.pressure = std::get<float>(baro2PressOpt.value());
-            alt = relAltitude_tele(packet.baro2.pressure);
-            packet.gps.altitude = alt;
-            LOG_INFO("Telemetry", "Altitude: %.2f", packet.gps.altitude);
-        }
+        auto baro2Data = _model->getMS561101BA03Data_2();
 
-        auto baro2TempOpt = sensorData->baroData2.getData("temperature");
-        if (baro2TempOpt.has_value() && std::holds_alternative<float>(baro2TempOpt.value()))
-        {
-            packet.baro2.temperature = std::get<float>(baro2TempOpt.value());
-        }
+        packet.baro2.pressure = baro2Data->pressure;
+        packet.baro2.temperature = baro2Data->temperature;
 
         // GPS data
-        auto latOpt = sensorData->gpsData.getData("latitude");
-        if (latOpt.has_value() && std::holds_alternative<float>(latOpt.value()))
-        {
-            packet.gps.latitude = std::get<float>(latOpt.value());
-            LOG_DEBUG("TELEMETRY", "LAT: %.6f", packet.gps.latitude);
-        }
+        auto gpsData = _model->getGPSData();
 
-        auto lonOpt = sensorData->gpsData.getData("longitude");
-        if (lonOpt.has_value() && std::holds_alternative<float>(lonOpt.value()))
-        {
-            packet.gps.longitude = std::get<float>(lonOpt.value());
-            LOG_DEBUG("TELEMETRY", "LON: %.6f", packet.gps.longitude);
-        }
+        packet.gps.latitude = gpsData->latitude;
+        packet.gps.longitude = gpsData->longitude;
+        packet.gps.altitude = gpsData->altitude;
 
-        // auto altOpt = sensorData->gpsData.getData("altitude");
-        // if (altOpt.has_value() && std::holds_alternative<float>(altOpt.value()))
-        // {
-        //     packet.gps.altitude = std::get<float>(altOpt.value());
-        // }
+        LOG_DEBUG("TELEMETRY", "GPS ALT: %.2f", packet.gps.altitude);
+        LOG_DEBUG("TELEMETRY", "GPS LAT: %.6f", packet.gps.latitude);
+        LOG_DEBUG("TELEMETRY", "GPS LON: %.6f", packet.gps.longitude);
     }
     catch (const std::exception &e)
     {
         LOG_ERROR("Telemetry", "Exception collecting data: %s", e.what());
-        xSemaphoreGive(dataMutex);
+        xSemaphoreGive(_modelMutex);
         return false;
     }
 
-    xSemaphoreGive(dataMutex);
+    xSemaphoreGive(_modelMutex);
 
     return true;
 }
 
 bool TelemetryTask::transmitMessage(const std::vector<uint8_t> &message)
 {
-    if (!transmitter || message.empty())
+    if (!_transmitter || message.empty())
     {
         return false;
     }
@@ -244,11 +205,11 @@ bool TelemetryTask::transmitMessage(const std::vector<uint8_t> &message)
     bool allSuccess = true;
     for (size_t i = 0; i < packets.size() && running; i++)
     {
-        ResponseStatusContainer result = transmitter->transmit(packets[i]);
+        ResponseStatusContainer result = _transmitter->transmit(packets[i]);
 
         if (result.getCode() == 0)
         {
-            packetsSent++;
+            _packetsSent++;
         }
         else
         {
@@ -270,7 +231,7 @@ bool TelemetryTask::transmitMessage(const std::vector<uint8_t> &message)
 
 void TelemetryTask::getStats(uint32_t &messages, uint32_t &packets, uint32_t &errors) const
 {
-    messages = messagesCreated;
-    packets = packetsSent;
-    errors = transmitErrors;
+    messages = _messagesCreated;
+    packets = _packetsSent;
+    errors = _transmitErrors;
 }
