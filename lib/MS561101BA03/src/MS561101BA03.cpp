@@ -1,7 +1,7 @@
 #include "MS561101BA03.hpp"
 #include <Arduino.h>
 
-MS561101BA03::MS561101BA03(uint8_t address) : _address(address), _pressure(0.0), _temperature(0.0)
+MS561101BA03::MS561101BA03(uint8_t address) : _address(address)
 {
     memset(_calibrationData, 0, sizeof(_calibrationData));
 }
@@ -22,24 +22,24 @@ bool MS561101BA03::init()
     return true;
 }
 
-std::optional<SensorData> MS561101BA03::getData()
+bool MS561101BA03::updateData()
 {
     // Read raw pressure and temperature
     uint32_t D1 = readRawPressure();
     uint32_t D2 = readRawTemperature();
     
     if (D1 == 0 || D2 == 0) {
-        return std::nullopt;
+        return false;
     }
     
+    _data = std::make_shared<MS561101BA03Data>();
+
     // Calculate compensated pressure and temperature
-    calculatePressureAndTemperature(D1, D2, _pressure, _temperature);
-    
-    SensorData data = SensorData("MS561101BA03");
-    data.setData("pressure", _pressure);
-    data.setData("temperature", _temperature);
-    
-    return data;
+    calculatePressureAndTemperature(D1, D2, _data->pressure, _data->temperature);    
+
+    _data->timestamp = millis();
+
+    return true;
 }
 
 void MS561101BA03::reset()
@@ -154,4 +154,9 @@ void MS561101BA03::calculatePressureAndTemperature(uint32_t D1, uint32_t D2, flo
     
     temperature = TEMP / 100.0f;
     pressure = P; // Convert to hPa/mbar
+}
+
+std::shared_ptr<MS561101BA03Data> MS561101BA03::getData()
+{
+    return _data;
 }

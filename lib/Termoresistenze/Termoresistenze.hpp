@@ -47,14 +47,17 @@ public:
                    double nominalTemperature = NOMINAL_TEMPERATURE, 
                    double bCoefficient = B_COEFFICIENT);
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+    std::shared_ptr<TermoresistenzeData> getData();
 
 private:
-    int thermistorPin;
-    double seriesResistor;
-    double nominalResistance;
-    double nominalTemperature;
-    double bCoefficient;
-    
+    int _thermistorPin;
+    double _seriesResistor;
+    double _nominalResistance;
+    double _nominalTemperature;
+    double _bCoefficient;
+
+    std::shared_ptr<TermoresistenzeData> _data;
+
     double calculateTemperature(int adcValue);
 };

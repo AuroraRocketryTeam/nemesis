@@ -38,8 +38,13 @@ class LIS3DHTRSensor : public ISensor
 public:
     LIS3DHTRSensor();
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+
+    // Public getter for each sensor value
+    std::shared_ptr<LIS3DHTRData> getData();
 
 private:
-    LIS3DHTR<TwoWire> lis;
+    LIS3DHTR<TwoWire> _lis;
+
+    std::shared_ptr<LIS3DHTRData> _data;
 };

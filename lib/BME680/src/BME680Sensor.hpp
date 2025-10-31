@@ -60,9 +60,14 @@ class BME680Sensor : public ISensor
 public:
     BME680Sensor(uint8_t addr);
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+    
+    // Public getter for each sensor value
+    std::shared_ptr<BME680Data> getData();
 
 private:
     Adafruit_BME680 bme;
     uint8_t addr;
+
+    std::shared_ptr<BME680Data> _data;
 };

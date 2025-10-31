@@ -19,11 +19,11 @@ public:
     virtual bool init() = 0;
 
     /**
-     * @brief Read and then get the sensor data.
+     * @brief Update the sensor's class fields with reading values 
      *
-     * @return Just read data.
+     * @return true if the reading was successful, false otherwise.
      */
-    virtual std::optional<SensorData> getData() = 0;
+    virtual bool updateData() = 0;
 
     /**
      * @brief Check if the sensor is initialized.

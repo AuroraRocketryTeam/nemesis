@@ -32,9 +32,12 @@ class MPRLSSensor : public ISensor
 public:
     MPRLSSensor();
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+
+    // Public getter for each sensor value
+    std::shared_ptr<MPRLSData> getData();
 
 private:
-    Adafruit_MPRLS mprls;
-    float pressure;
+    Adafruit_MPRLS _mprls;
+    std::shared_ptr<MPRLSData> _data;
 };

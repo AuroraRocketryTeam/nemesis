@@ -51,7 +51,9 @@ class MS561101BA03 : public ISensor
 public:
     MS561101BA03(uint8_t address = 0x77);
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+
+    std::shared_ptr<MS561101BA03Data> getData();
 
 private:
     uint8_t _address;
@@ -65,7 +67,6 @@ private:
     uint32_t readRawPressure();
     uint32_t readRawTemperature();
     void calculatePressureAndTemperature(uint32_t D1, uint32_t D2, float& pressure, float& temperature);
-    
-    float _pressure;
-    float _temperature;
+
+    std::shared_ptr<MS561101BA03Data> _data;
 };

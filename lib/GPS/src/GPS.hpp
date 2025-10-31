@@ -59,8 +59,14 @@ class GPS : public ISensor
 public:
     GPS();
     bool init() override;
-    std::optional<SensorData> getData() override;
+    bool updateData() override;
+
+    // Public getter for each sensor value
+    std::shared_ptr<GPSData> getData();
 
 private:
-    SFE_UBLOX_GNSS myGNSS;
+    // SparkFun u-blox GNSS library interface object
+    SFE_UBLOX_GNSS _myGNSS;
+
+    std::shared_ptr<GPSData> _data;
 };

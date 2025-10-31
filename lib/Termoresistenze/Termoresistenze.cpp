@@ -7,48 +7,51 @@ Termoresistenze::Termoresistenze(int pin,
                                 double nominalRes, 
                                 double nominalTemp, 
                                 double bCoeff)
-    : thermistorPin(pin)
-    , seriesResistor(seriesRes)
-    , nominalResistance(nominalRes)
-    , nominalTemperature(nominalTemp)
-    , bCoefficient(bCoeff)
+    : _thermistorPin(pin)
+    , _seriesResistor(seriesRes)
+    , _nominalResistance(nominalRes)
+    , _nominalTemperature(nominalTemp)
+    , _bCoefficient(bCoeff)
 {
 }
 
 bool Termoresistenze::init()
 {
-    pinMode(thermistorPin, INPUT);
+    pinMode(_thermistorPin, INPUT);
     return true;
 }
 
-std::optional<SensorData> Termoresistenze::getData()
+bool Termoresistenze::updateData()
 {
-    int adcValue = analogRead(thermistorPin);
-    
-    if (adcValue == 0) {
-        return std::nullopt;
+    _data = std::make_shared<TermoresistenzeData>();
+
+    _data->adcValue = analogRead(_thermistorPin);
+
+    if (_data->adcValue == 0) {
+        return false;
     }
-    
-    double temperature = calculateTemperature(adcValue);
-    
-    SensorData data = SensorData("Termoresistenze");
-    data.setData("Temperature", temperature);
-    data.setData("ADC_Value", adcValue);
-    
-    return data;
+
+    _data->temperature = calculateTemperature(_data->adcValue);
+
+    return true;
+}
+
+std::shared_ptr<TermoresistenzeData> Termoresistenze::getData()
+{
+    return _data;
 }
 
 double Termoresistenze::calculateTemperature(int adcValue)
 {
     // Calculate thermistor resistance
-    double resistance = seriesResistor * (4095.0 / adcValue - 1.0);
+    double resistance = _seriesResistor * (4095.0 / adcValue - 1.0);
 
     // Steinhart-Hart equation (simplified Beta model)
     double steinhart;
-    steinhart = resistance / nominalResistance;      // (R/R0)
+    steinhart = resistance / _nominalResistance;      // (R/R0)
     steinhart = log(steinhart);                      // ln(R/R0)
-    steinhart /= bCoefficient;                       // 1/B * ln(R/R0)
-    steinhart += 1.0 / (nominalTemperature + 273.15); // + (1/T0)
+    steinhart /= _bCoefficient;                       // 1/B * ln(R/R0)
+    steinhart += 1.0 / (_nominalTemperature + 273.15); // + (1/T0)
     steinhart = 1.0 / steinhart;                     // Invert
     steinhart -= 273.15;                             // Convert to °C
 

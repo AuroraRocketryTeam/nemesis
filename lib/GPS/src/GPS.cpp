@@ -2,39 +2,44 @@
 
 GPS::GPS()
 {
-    this->myGNSS = SFE_UBLOX_GNSS();
+    _myGNSS = SFE_UBLOX_GNSS();
 }
 
 bool GPS::init()
 {
     Wire.begin();
-    if (!myGNSS.begin(Wire))
+    if (!_myGNSS.begin(Wire))
     {
         return false;
     }
     return true;
 }
 
-std::optional<SensorData> GPS::getData()
+bool GPS::updateData()
 {
-    uint8_t fixType = myGNSS.getFixType();
-    uint8_t satellites = myGNSS.getSIV();
-    SensorData data("GPS");
-    data.setData("satellites", satellites);
-    data.setData("fix", fixType);
+    _data = std::make_shared<GPSData>();
+
+    _data->satellites = _myGNSS.getFixType();
+    _data->fixType = _myGNSS.getSIV();
 
     // Check for valid fix (fix type 2 = 2D, 3 = 3D)
-    if (fixType >= 3)
+    if (_data->fixType >= 3)
     {
-        int32_t lat = myGNSS.getLatitude();
-        int32_t lon = myGNSS.getLongitude();
-        data.setData("latitude", lat / 10000000.0);         // Check correct conversion formula
-        data.setData("longitude", lon / 10000000.0);
-        double altitude_ellipsoid = myGNSS.getAltitude() / 1000.0;      // Check correct conversion formula
-        data.setData("altitude", altitude_ellipsoid);
-        data.setData("speed", myGNSS.getGroundSpeed() / 1000.0 * 3.6);  // Check correct conversion formula
-        data.setData("hdop", myGNSS.getHorizontalDOP() / 100.0);
+        _data->latitude = _myGNSS.getLatitude() / 10000000.0;
+        _data->longitude = _myGNSS.getLongitude() / 10000000.0;
+        _data->altitude = _myGNSS.getAltitude() / 1000.0;
+        _data->ground_speed = _myGNSS.getGroundSpeed() / 1000.0 * 3.6;
+        _data->hdop = _myGNSS.getHorizontalDOP() / 100.0;
+
+        _data->timestamp = millis();
+    } else {
+        return false;
     }
 
-    return data;
+    return true;
+}
+
+std::shared_ptr<GPSData> GPS::getData()
+{
+    return _data;
 }

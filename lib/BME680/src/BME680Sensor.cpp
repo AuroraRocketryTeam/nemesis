@@ -34,18 +34,24 @@ bool BME680Sensor::init()
     return this->isInitialized();
 }
 
-std::optional<SensorData> BME680Sensor::getData()
+bool BME680Sensor::updateData()
 {
     if (!bme.performReading() || !this->isInitialized())
     {
-        return std::nullopt;
+        return false;
     }
 
-    SensorData data("BME680");
-    data.setData("temperature", bme.temperature);
-    data.setData("pressure", bme.pressure);
-    data.setData("humidity", bme.humidity);
-    data.setData("gas_resistance", bme.gas_resistance);
+    _data = std::make_shared<BME680Data>();
+    _data->temperature = bme.temperature;
+    _data->humidity = bme.humidity;
+    _data->pressure = bme.pressure;
+    _data->gasResistance = bme.gas_resistance;
+    _data->timestamp = millis();
 
-    return data;
+    return true;
+}
+
+std::shared_ptr<BME680Data> BME680Sensor::getData()
+{
+    return _data;
 }

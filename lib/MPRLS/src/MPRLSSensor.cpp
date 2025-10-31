@@ -3,14 +3,14 @@
 
 MPRLSSensor::MPRLSSensor()
 {
-    mprls = Adafruit_MPRLS();
+    _mprls = Adafruit_MPRLS();
 }
 
 bool MPRLSSensor::init()
 {
     int attempts = 0;
     uint start = millis();
-    while (!mprls.begin() && attempts++ < SENSOR_LOOKUP_MAX_ATTEMPTS)
+    while (!_mprls.begin() && attempts++ < SENSOR_LOOKUP_MAX_ATTEMPTS)
     {
         uint end = millis();
         if (end - start > SENSOR_LOOKUP_TIMEOUT)
@@ -26,12 +26,21 @@ bool MPRLSSensor::init()
     return this->isInitialized();
 }
 
-std::optional<SensorData> MPRLSSensor::getData()
+bool MPRLSSensor::updateData()
 {
-    this->pressure = mprls.readPressure();
-    
-    SensorData data("MPRLS");
-    data.setData("pressure", this->pressure);
+    _data = std::make_shared<MPRLSData>();
 
-    return data;
+    _data->pressure = _mprls.readPressure();
+
+    _data->timestamp = millis();
+
+    if (isnan(_data->pressure)) {
+        return false;
+    }
+
+    return true;
+}
+
+std::shared_ptr<MPRLSData> MPRLSSensor::getData() {
+    return _data;
 }
