@@ -21,6 +21,40 @@
 #include <pins.h>
 #include <config.h>
 
+class BME680Data : public SensorData
+{
+public:
+    BME680Data() : SensorData("BME680") {}
+
+    // Temperature (°C)
+    float temperature;
+    // Humidity (%)
+    float humidity;
+    // Pressure (Pa)
+    float pressure;
+    // Gas resistance (Ohm)
+    float gasResistance;
+
+    // Metadata
+    uint32_t timestamp;
+
+    json toJSON() const override {
+        json j;
+        j["source"] = getSensorName();
+
+        json sensorDataJson;
+        sensorDataJson["temperature"] = temperature;
+        sensorDataJson["humidity"] = humidity;
+        sensorDataJson["pressure"] = pressure;
+        sensorDataJson["gasResistance"] = gasResistance;
+        sensorDataJson["timestamp"] = timestamp;
+
+        j["sensorData"] = sensorDataJson;
+
+        return j;
+    }
+};
+
 class BME680Sensor : public ISensor
 {
 public:

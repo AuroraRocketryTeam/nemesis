@@ -9,6 +9,35 @@
 #define NOMINAL_TEMPERATURE 25.0
 #define B_COEFFICIENT 3500
 
+class TermoresistenzeData : public SensorData
+{
+public:
+    TermoresistenzeData() : SensorData("Termoresistenze") {}
+
+    // ADC Value
+    int adcValue;
+
+    // Temperature in °C
+    double temperature;
+
+    // Metadata
+    uint32_t timestamp;
+
+    json toJSON() const override {
+        json j;
+        j["source"] = getSensorName();
+
+        json sensorDataJson;
+        sensorDataJson["adcValue"] = adcValue;
+        sensorDataJson["temperature"] = temperature;
+        sensorDataJson["timestamp"] = timestamp;
+
+        j["sensorData"] = sensorDataJson;
+
+        return j;
+    }
+};
+
 class Termoresistenze : public ISensor
 {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <BNO055SensorInterface.hpp>
+#include <SensorData.hpp>
 #include <ISensor.hpp>
 
 class BNO055Sensor : public ISensor

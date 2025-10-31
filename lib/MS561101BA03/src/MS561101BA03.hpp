@@ -17,6 +17,35 @@
 #define MS5611_CMD_ADC_READ     0x00
 #define MS5611_CMD_PROM_READ    0xA0
 
+class MS561101BA03Data : public SensorData
+{
+public:
+    MS561101BA03Data() : SensorData("MS561101BA03") {}
+
+    // Pressure in mbar
+    float pressure;
+    
+    // Temperature in °C
+    float temperature;
+
+    // Metadata
+    uint32_t timestamp;
+
+    json toJSON() const override {
+        json j;
+        j["source"] = getSensorName();
+
+        json sensorDataJson;
+        sensorDataJson["pressure"] = pressure;
+        sensorDataJson["temperature"] = temperature;
+        sensorDataJson["timestamp"] = timestamp;
+
+        j["sensorData"] = sensorDataJson;
+
+        return j;
+    }
+};
+
 class MS561101BA03 : public ISensor
 {
 public:
