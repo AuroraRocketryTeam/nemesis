@@ -1,5 +1,4 @@
-#ifndef BNO055_SENSOR_INTERFACE_HPP
-#define BNO055_SENSOR_INTERFACE_HPP
+#pragma once
 
 extern "C" {
   #include "bno055.h"
@@ -15,7 +14,6 @@ extern "C" {
 /**
  * @brief Interface for BNO055 sensor operations, using low-level APIs from the BNO055_SensorAPI official library, instead of Adafruit_BNO055.
  */
-
 class BNO055SensorInterface
 {
 private:
@@ -278,4 +276,3 @@ public:
      */
     float get_temperature();
 };
-#endif

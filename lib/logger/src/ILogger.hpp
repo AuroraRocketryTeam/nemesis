@@ -6,8 +6,6 @@
 #include "LogData.hpp"
 #include <SensorData.hpp>
 
-using json = nlohmann::json;
-
 /**
  * @brief Interface for loggers.
  * 

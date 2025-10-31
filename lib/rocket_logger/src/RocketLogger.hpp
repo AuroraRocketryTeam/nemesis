@@ -9,8 +9,6 @@
 #include <SensorData.hpp>
 #include "Logger.hpp"
 
-using json = nlohmann::json;
-
 /**
  * @brief Class to log messages and sensor data.
  * 

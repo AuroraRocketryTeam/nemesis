@@ -19,7 +19,7 @@ BNO055Sensor bno;
 Termoresistenze termoresistenze(THERMISTOR_PIN, SERIES_RESISTOR, NOMINAL_RESISTANCE, NOMINAL_TEMPERATURE, B_COEFFICIENT);
 
 // Logger object
-RocketLogger rocketLogger;
+RocketLogger logger;
 
 // ADC pin for voltage measurement
 #define ADC_PIN A0
@@ -83,43 +83,43 @@ void loop() {
 
     // Create SensorData objects for each sensor
     //if (mprlsDataOpt.has_value()) {
-    //    rocketLogger.logSensorData(mprlsDataOpt.value());
+    //    logger.logSensorData(mprlsDataOpt.value());
     //}
 
     //if (bnoDataOpt.has_value()) {
-    //    rocketLogger.logSensorData(bnoDataOpt.value());
+    //    logger.logSensorData(bnoDataOpt.value());
     //} else {
-    //    rocketLogger.logError("BNO055 data not available");
+    //    logger.logError("BNO055 data not available");
     //}
 
     //if (lis3dhDataOpt.has_value()) {
-    //    rocketLogger.logSensorData(lis3dhDataOpt.value());
+    //    logger.logSensorData(lis3dhDataOpt.value());
     //} else {
-    //    rocketLogger.logError("LIS3DHTR data not available");
+    //    logger.logError("LIS3DHTR data not available");
     //}
 
     //if (ms56DataOpt_1.has_value()) {
-    //    rocketLogger.logSensorData("BAR1", ms56DataOpt_1.value());
+    //    logger.logSensorData("BAR1", ms56DataOpt_1.value());
     //} else {
-    //    rocketLogger.logError("BAR1 data not available");
+    //    logger.logError("BAR1 data not available");
     //}
 
     //if (ms56DataOpt_2.has_value()) {
-    //    rocketLogger.logSensorData("BAR2", ms56DataOpt_2.value());
+    //    logger.logSensorData("BAR2", ms56DataOpt_2.value());
     //} else {
-    //    rocketLogger.logError("BAR2 data not available");
+    //    logger.logError("BAR2 data not available");
     //}
 
     if (termoresistenzeDataOpt.has_value()) {
-        rocketLogger.logSensorData("Termoresistenze", *termoresistenzeDataOpt);
+        logger.logSensorData("Termoresistenze", *termoresistenzeDataOpt);
     } else {
-        rocketLogger.logError("Termoresistenze data not available");
+        logger.logError("Termoresistenze data not available");
     }
 
     //if (gpsDataOpt.has_value()) {
-    //    rocketLogger.logSensorData("GPS", gpsDataOpt.value());
+    //    logger.logSensorData("GPS", gpsDataOpt.value());
     //} else {
-    //    rocketLogger.logError("GPS data not available");
+    //    logger.logError("GPS data not available");
     //}
 
     // Buzzer control logic
@@ -173,11 +173,11 @@ void loop() {
 
     //auto mainActuatorsData = SensorData("MainActuators");
     //mainActuatorsData.setData("State", toggleStateMainAct ? "ON" : "OFF");
-    //rocketLogger.logSensorData(mainActuatorsData);
+    //logger.logSensorData(mainActuatorsData);
 
     //auto drogueActuatorsData = SensorData("DrogueActuators");
     //drogueActuatorsData.setData("State", toggleStateDrogueAct ? "ON" : "OFF");
-    //rocketLogger.logSensorData(drogueActuatorsData);
+    //logger.logSensorData(drogueActuatorsData);
 
     //if (buzzerPlaying) {
     //    if (currentTime - buzzerTimer >= buzzerDuration) {
@@ -195,7 +195,7 @@ void loop() {
 
     //auto buzzerData = SensorData("Buzzer");
     //buzzerData.setData("State", buzzerPlaying ? "ON" : "OFF");
-    //rocketLogger.logSensorData(buzzerData);
+    //logger.logSensorData(buzzerData);
 
     // Voltage
     int adcValue = analogRead(ADC_PIN);
@@ -203,13 +203,13 @@ void loop() {
     auto voltageData = SensorData("Voltage");
     voltageData.setData("ADC_Value", adcValue);
     voltageData.setData("Voltage", voltage);
-    rocketLogger.logSensorData(voltageData);
+    logger.logSensorData(voltageData);
 
     // Log all data
-    Serial.println(rocketLogger.getJSONAll().dump().c_str());
+    Serial.println(logger.getJSONAll().dump().c_str());
     Serial.flush();
 
-    rocketLogger.clearData();
+    logger.clearData();
 
     delay(100);
 }

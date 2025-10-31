@@ -17,7 +17,44 @@
 // is expected, otherwise the one obtained for Euroc 2025 is expected
 //#define OLD_DATA
 
+/**
+ * @brief Class to implement a simulation task.
+ * 
+ */
 class SimulationTask : public BaseTask {
+public:
+    /**
+     * @brief Construct a new Simulation Task object
+     * 
+     * @param csvFilePath The path to the CSV file containing the simulation data
+     * @param model The shared pointer to the rocket model
+     * @param modelMutex The semaphore handle to protect access to the model
+     * @param logger The shared pointer to the RocketLogger instance
+     * @param loggerMutex The semaphore handle to protect access to the logger
+     */
+    SimulationTask(
+        const std::string& csvFilePath,
+        std::shared_ptr<Nemesis> model,
+        SemaphoreHandle_t modelMutex,
+        std::shared_ptr<RocketLogger> logger,
+        SemaphoreHandle_t loggerMutex);
+
+    /**
+     * @brief Destroy the Simulation Task object
+     * 
+     */
+    ~SimulationTask();
+    
+    void onTaskStart() override;
+    void onTaskStop() override;
+    void taskFunction() override;
+    
+    /**
+     * @brief Reset the simulation task to its initial state
+     * 
+     */
+    void reset();
+
 private:
     bool _started = false;
 
@@ -33,20 +70,7 @@ private:
 
     std::shared_ptr<Nemesis> _model;
     SemaphoreHandle_t _modelMutex;
-    std::shared_ptr<RocketLogger> _rocketLogger;
+    std::shared_ptr<RocketLogger> _logger;
     SemaphoreHandle_t _loggerMutex;
-
-public:
-    SimulationTask(
-        const std::string& csvFilePath,
-        std::shared_ptr<Nemesis> model,
-        SemaphoreHandle_t modelMutex,
-        std::shared_ptr<RocketLogger> rocketLogger,
-        SemaphoreHandle_t loggerMutex);
-    ~SimulationTask();
-    void onTaskStart() override;
-    void onTaskStop() override;
-    void taskFunction() override;
-    void reset();
     
 };

@@ -9,8 +9,19 @@
 #include <LIS3DHTRSensor.hpp>
 #include <GPS.hpp>
 
+/**
+ * @brief Class to implement an EKF task.
+ * 
+ */
 class EkfTask : public BaseTask {
 public:
+    /**
+     * @brief Construct a new Ekf Task object
+     * 
+     * @param model The shared pointer to the rocket model
+     * @param modelMutex The semaphore handle to protect access to the model
+     * @param kalmanFilter The shared pointer to the Kalman filter instance
+     */
     EkfTask(std::shared_ptr<Nemesis> model, 
         SemaphoreHandle_t modelMutex,
         std::shared_ptr<KalmanFilter1D> kalmanFilter) : 

@@ -3,6 +3,10 @@
 #include <freertos/task.h>
 #include <Arduino.h>
 
+/**
+ * @brief Enumeration for different task types.
+ * 
+ */
 enum class TaskType
 {
     SENSOR,
@@ -17,6 +21,10 @@ enum class TaskType
     LOGGING
 };
 
+/**
+ * @brief Enumeration for task priority levels.
+ * 
+ */
 enum class TaskPriority
 {
     TASK_LOW = 1,
@@ -26,6 +34,10 @@ enum class TaskPriority
     TASK_REAL_TIME = 5
 };
 
+/**
+ * @brief Enumeration for task core assignment.
+ * 
+ */
 enum class TaskCore
 {
     CORE_0 = 0, // Critical tasks
@@ -33,6 +45,10 @@ enum class TaskCore
     ANY_CORE = tskNO_AFFINITY
 };
 
+/**
+ * @brief Structure to hold task configuration parameters.
+ * 
+ */
 struct TaskConfig
 {
     TaskType type;

@@ -23,7 +23,7 @@
 // // Termoresistenze termoresistenze(THERMISTOR_PIN, SERIES_RESISTOR, NOMINAL_RESISTANCE, NOMINAL_TEMPERATURE, B_COEFFICIENT);
 
 // // Logger objects
-// RocketLogger rocketLogger;
+// RocketLogger logger;
 // LoRaTransmitter transmitter;
 
 // // ADC pin for voltage measurement
@@ -106,58 +106,58 @@
 
 //     // Create SensorData objects for each sensor
 //     // if (mprlsDataOpt.has_value()) {
-//     //    rocketLogger.logSensorData(mprlsDataOpt.value());
+//     //    logger.logSensorData(mprlsDataOpt.value());
 //     //}
 
 //     if (bnoDataOpt.has_value())
 //     {
-//         rocketLogger.logSensorData(bnoDataOpt.value());
+//         logger.logSensorData(bnoDataOpt.value());
 //     }
 //     else
 //     {
-//         rocketLogger.logError("BNO055 data not available");
+//         logger.logError("BNO055 data not available");
 //     }
 
 //     if (lis3dhDataOpt.has_value())
 //     {
-//         rocketLogger.logSensorData(lis3dhDataOpt.value());
+//         logger.logSensorData(lis3dhDataOpt.value());
 //     }
 //     else
 //     {
-//         rocketLogger.logError("LIS3DHTR data not available");
+//         logger.logError("LIS3DHTR data not available");
 //     }
 
 //     if (ms56DataOpt_1.has_value())
 //     {
-//         rocketLogger.logSensorData("BAR1", ms56DataOpt_1.value());
+//         logger.logSensorData("BAR1", ms56DataOpt_1.value());
 //     }
 //     else
 //     {
-//         rocketLogger.logError("BAR1 data not available");
+//         logger.logError("BAR1 data not available");
 //     }
 
 //     if (ms56DataOpt_2.has_value())
 //     {
-//         rocketLogger.logSensorData("BAR2", ms56DataOpt_2.value());
+//         logger.logSensorData("BAR2", ms56DataOpt_2.value());
 //     }
 //     else
 //     {
-//         rocketLogger.logError("BAR2 data not available");
+//         logger.logError("BAR2 data not available");
 //     }
 
 //     // if (termoresistenzeDataOpt.has_value()) {
-//     //     rocketLogger.logSensorData("Termoresistenze", *termoresistenzeDataOpt);
+//     //     logger.logSensorData("Termoresistenze", *termoresistenzeDataOpt);
 //     // } else {
-//     //     rocketLogger.logError("Termoresistenze data not available");
+//     //     logger.logError("Termoresistenze data not available");
 //     // }
 
 //     if (gpsDataOpt.has_value())
 //     {
-//         rocketLogger.logSensorData("GPS", gpsDataOpt.value());
+//         logger.logSensorData("GPS", gpsDataOpt.value());
 //     }
 //     else
 //     {
-//         rocketLogger.logError("GPS data not available");
+//         logger.logError("GPS data not available");
 //     }
 
 //     // Buzzer control logic
@@ -220,11 +220,11 @@
 
 //     auto mainActuatorsData = SensorData("MainActuators");
 //     mainActuatorsData.setData("State", digitalRead(MAIN_ACTUATORS_PIN) == HIGH ? "ON" : "OFF");
-//     rocketLogger.logSensorData(mainActuatorsData);
+//     logger.logSensorData(mainActuatorsData);
 
 //     auto drogueActuatorsData = SensorData("DrogueActuators");
 //     drogueActuatorsData.setData("State", digitalRead(DROGUE_ACTUATORS_PIN) == HIGH ? "ON" : "OFF");
-//     rocketLogger.logSensorData(drogueActuatorsData);
+//     logger.logSensorData(drogueActuatorsData);
 
 //     // if (buzzerPlaying) {
 //     //     if (currentTime - buzzerTimer >= buzzerDuration) {
@@ -242,7 +242,7 @@
 
 //     auto buzzerData = SensorData("Buzzer");
 //     buzzerData.setData("State", buzzerPlaying ? "ON" : "OFF");
-//     rocketLogger.logSensorData(buzzerData);
+//     logger.logSensorData(buzzerData);
 
 //     // Voltage from batteries
 //     int adcValue = analogRead(ADC_PIN);
@@ -254,10 +254,10 @@
 //     voltageData.setData("ADC_Value", adcValue);
 //     voltageData.setData("Voltage", voltage);
 //     voltageData.setData("Percentage", voltageStr); // Current 62.5
-//     rocketLogger.logSensorData(voltageData);
+//     logger.logSensorData(voltageData);
 
 //     // Get all JSON data from RocketLogger
-//     json allData = rocketLogger.getJSONAll();
+//     json allData = logger.getJSONAll();
 
 //     // Log to CSV with current timestamp
 //     // csvLogger.logSensorData(allData, currentTime);
@@ -288,7 +288,7 @@
 //     //Serial.println(allData.dump(4).c_str());
 //     Serial.flush();
 
-//     rocketLogger.clearData();
+//     logger.clearData();
 
 //     delay(100);
 // }

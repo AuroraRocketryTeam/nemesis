@@ -20,23 +20,63 @@
  */
 class BaseTask : public ITask
 {
+public:
+    /**
+     * @brief Construct a new Base Task object
+     * 
+     * @param name The name of the task
+     */
+    BaseTask(const char *name);
+    
+    /**
+     * @brief Destroy the Base Task object and clean up resources.
+     * 
+     */
+    virtual ~BaseTask();
+
+    /**
+     * @brief Start the task with the given configuration.
+     * 
+     * @param config The task configuration
+     * @return true if the task started successfully 
+     * @return false if the task failed to start
+     */
+    bool start(const TaskConfig &config) override;
+
+    /**
+     * @brief Stop the task and clean up resources.
+     * 
+     */
+    void stop() override;
+
+    /**
+     * @brief Check if the task is currently running.
+     * 
+     * @return true if the task is running
+     * @return false if the task is not running
+     */
+    bool isRunning() const override { return running; }
+
+    /**
+     * @brief Get the name of the task.
+     * 
+     * @return const char* The name of the task
+     */
+    const char *getName() const override { return taskName; }
+    
+    /**
+     * @brief Get the high water mark of the task's stack.
+     * 
+     * @return uint32_t The minimum amount of stack space that remained for the task
+     */
+    uint32_t getStackHighWaterMark() const override;
+
 protected:
     TaskHandle_t taskHandle;
     TaskConfig config;
     volatile bool running;
     const char *taskName;
 
-public:
-    BaseTask(const char *name);
-    virtual ~BaseTask();
-
-    bool start(const TaskConfig &config) override;
-    void stop() override;
-    bool isRunning() const override { return running; }
-    const char *getName() const override { return taskName; }
-    uint32_t getStackHighWaterMark() const override;
-
-protected:
     virtual void taskFunction() = 0;
     virtual void onTaskStart() {}
     virtual void onTaskStop() {}

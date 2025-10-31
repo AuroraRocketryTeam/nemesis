@@ -13,11 +13,11 @@ bool SimulationTask::_fileInitialized = false;
 SimulationTask::SimulationTask(const std::string& csvFilePathPar,
                                 std::shared_ptr<Nemesis> model,
                                 SemaphoreHandle_t modelMutex,
-                                std::shared_ptr<RocketLogger> rocketLogger,
+                                std::shared_ptr<RocketLogger> logger,
                                 SemaphoreHandle_t loggerMutex)
         : BaseTask("SimulationTask"), 
             _model(model), _modelMutex(modelMutex), 
-            _rocketLogger(rocketLogger), _loggerMutex(loggerMutex) {
+            _logger(logger), _loggerMutex(loggerMutex) {
 
     // Only initialize SD and open file once for all instances
     if (!_fileInitialized) {

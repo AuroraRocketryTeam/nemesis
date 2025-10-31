@@ -2,11 +2,11 @@
 #include <stdexcept>
 #include "esp_task_wdt.h"
 
-SDLoggingTask::SDLoggingTask(std::shared_ptr<RocketLogger> rocketLogger, 
+SDLoggingTask::SDLoggingTask(std::shared_ptr<RocketLogger> logger, 
                                SemaphoreHandle_t loggerMutex,
                                std::shared_ptr<SD> sdCard)
     : BaseTask("SDLoggingTask"),
-      rocketLogger(rocketLogger),
+      logger(logger),
       loggerMutex(loggerMutex),
       sdCard(sdCard)
 {
@@ -15,7 +15,7 @@ SDLoggingTask::SDLoggingTask(std::shared_ptr<RocketLogger> rocketLogger,
     if (!sdInitialized) {
         LOG_INFO("SDLoggingTask", "SD card Failed!");
         if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            //rocketLogger->logError("SD card initialization failed!");
+            //logger->logError("SD card initialization failed!");
             xSemaphoreGive(loggerMutex);
         } else {
             LOG_ERROR("SDLoggingTask", "Failed to acquire mutex for logging SD error");
@@ -23,7 +23,7 @@ SDLoggingTask::SDLoggingTask(std::shared_ptr<RocketLogger> rocketLogger,
     } else {
         LOG_INFO("SDLoggingTask", "SD card initialized successfully.");
         if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            //rocketLogger->logInfo("SD card initialized successfully.");
+            //logger->logInfo("SD card initialized successfully.");
             xSemaphoreGive(loggerMutex);
         } else {
             LOG_ERROR("SDLoggingTask", "Failed to acquire mutex for logging SD success");
@@ -42,7 +42,7 @@ void SDLoggingTask::taskFunction() {
         // Early exit check
         if (!running) break;
         
-        size_t currentLogCount = rocketLogger->getLogCount();
+        size_t currentLogCount = logger->getLogCount();
         
         if (currentLogCount >= BATCH_SIZE) {
             
@@ -72,8 +72,8 @@ void SDLoggingTask::taskFunction() {
                 if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
                     // Convert the entire batch of JSON data to a string
                     try {
-                        dataToWrite = rocketLogger->getJSONAll().dump();
-                        rocketLogger->clearData();
+                        dataToWrite = logger->getJSONAll().dump();
+                        logger->clearData();
                     } catch (const std::exception& e) {
                         LOG_ERROR("SDLoggingTask", "JSON serialization failed: %s", e.what());
                         xSemaphoreGive(loggerMutex);
@@ -113,7 +113,7 @@ void SDLoggingTask::taskFunction() {
             } else if (!sdInitialized) {
                 // SD not available, just clear the data to prevent memory buildup
                 if (xSemaphoreTake(loggerMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                    rocketLogger->clearData();
+                    logger->clearData();
                     xSemaphoreGive(loggerMutex);
                 } else {
                     LOG_ERROR("SDLoggingTask", "Failed to acquire logger mutex for clearing data (SD not initialized)");

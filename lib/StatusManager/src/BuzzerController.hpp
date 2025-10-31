@@ -38,6 +38,10 @@ struct BuzzerSequence
     uint16_t pause;    // Pause after the tone
 };
 
+/**
+ * @brief Class to control a buzzer with various patterns and tones.
+ * 
+ */
 class BuzzerController
 {
 private:

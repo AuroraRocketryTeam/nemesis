@@ -12,23 +12,72 @@
 #include <map>
 #include <Nemesis.hpp>
 
+/**
+ * @brief Enumeration for the different rocket states.
+ * 
+ */
 class RocketFSM : public IStateMachine
 {
 public:
+    /**
+     * @brief Construct a new Rocket FSM object
+     * 
+     * @param model The shared pointer to the rocket model
+     * @param sd The shared pointer to the SD card
+     * @param logger The shared pointer to the RocketLogger instance
+     */
     RocketFSM(std::shared_ptr<Nemesis> model,
               std::shared_ptr<SD> sd,
               std::shared_ptr<RocketLogger> logger
             );
+    
+    /**
+     * @brief Destroy the Rocket FSM object
+     * 
+     */
     ~RocketFSM();
 
     // IStateMachine interface
     void init() override;
     void start() override;
     void stop() override;
+
+    /**
+     * @brief Send an event to the FSM
+     * 
+     * @param event The event to send
+     * @param targetState The target state to transition to
+     * @param eventData Optional data associated with the event
+     * @return true if the event was processed successfully, false otherwise
+     */
     bool sendEvent(FSMEvent event, RocketState targetState = RocketState::INACTIVE, void *eventData = nullptr) override;
+
+    /**
+     * @brief Get the current state of the FSM
+     * 
+     * @return RocketState The current state
+     */
     RocketState getCurrentState() override;
+
+    /**
+     * @brief Get the current flight phase of the FSM
+     * 
+     * @return FlightPhase The current flight phase
+     */
     FlightPhase getCurrentPhase() override;
+
+    /**
+     * @brief Force a transition to a new state
+     * 
+     * @param newState The new state to transition to
+     */
     void forceTransition(RocketState newState) override;
+
+    /**
+     * @brief Check if the FSM has finished its current task
+     * 
+     * @return true if the FSM is finished, false otherwise
+     */
     bool isFinished() override;
 
     // Utility methods

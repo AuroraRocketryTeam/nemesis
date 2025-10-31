@@ -67,6 +67,10 @@ struct StatusPattern
     bool buzzerSync; // Whether to sync buzzer with LED
 };
 
+/**
+ * @brief Class to manage system status using LED and Buzzer controllers.
+ * 
+ */
 class StatusManager
 {
 private:

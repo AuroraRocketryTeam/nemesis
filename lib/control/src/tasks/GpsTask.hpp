@@ -9,9 +9,21 @@
 #include "Logger.hpp"
 #include <RocketLogger.hpp>
 
+/**
+ * @brief Class to implement a GPS task.
+ * 
+ */
 class GpsTask : public BaseTask
 {
 public:
+    /**
+     * @brief Construct a new Gps Task object
+     * 
+     * @param model The shared pointer to the rocket model
+     * @param modelMutex The semaphore handle to protect access to the model
+     * @param logger The shared pointer to the RocketLogger instance
+     * @param loggerMutex The semaphore handle to protect access to the logger
+     */
     GpsTask(std::shared_ptr<Nemesis> model,
             SemaphoreHandle_t modelMutex,
             std::shared_ptr<RocketLogger> logger, 

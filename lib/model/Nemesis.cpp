@@ -6,13 +6,13 @@
 #define DROGUE_ACTUATORS_PIN D1
 #define BUZZER_PIN D2
 
-Nemesis::Nemesis(std::shared_ptr<RocketLogger> rocketLogger,
+Nemesis::Nemesis(std::shared_ptr<RocketLogger> logger,
             std::shared_ptr<BNO055Sensor> bno,
             std::shared_ptr<LIS3DHTRSensor> lis3dh,
             std::shared_ptr<MS561101BA03> ms56_1,
             std::shared_ptr<MS561101BA03> ms56_2,
             std::shared_ptr<GPS> gps) :
-    _rocketLogger(rocketLogger),
+    _logger(logger),
     _bno(bno),
     _lis3dh(lis3dh),
     _ms56_1(ms56_1),
@@ -45,14 +45,14 @@ void Nemesis::readBattery() {
     //voltageData.setData("Voltage", _batteryVoltage);
     //voltageData.setData("Percentage", _batteryPercentage);
     
-    //rocketLogger->logSensorData(voltageData);
+    //logger->logSensorData(voltageData);
 }
 
 bool Nemesis::updateBNO055() {
     bool result = _bno->updateData();
 
     _bnoData = _bno->getData();
-    _rocketLogger->logSensorData(_bnoData);
+    _logger->logSensorData(_bnoData);
 
     return result;
 }
@@ -61,7 +61,7 @@ bool Nemesis::updateLIS3DHTR() {
     bool result = _lis3dh->updateData();
 
     _lis3dhData = _lis3dh->getData();
-    _rocketLogger->logSensorData(_lis3dhData);
+    _logger->logSensorData(_lis3dhData);
 
     return result;
 }
@@ -70,7 +70,7 @@ bool Nemesis::updateMS561101BA03_1() {
     bool result = _ms56_1->updateData();
 
     _ms561101ba03Data_1 = _ms56_1->getData();
-    _rocketLogger->logSensorData(_ms561101ba03Data_1);
+    _logger->logSensorData(_ms561101ba03Data_1);
 
     return result;
 }
@@ -79,7 +79,7 @@ bool Nemesis::updateMS561101BA03_2() {
     bool result = _ms56_2->updateData();
 
     _ms561101ba03Data_2 = _ms56_2->getData();
-    _rocketLogger->logSensorData(_ms561101ba03Data_2);
+    _logger->logSensorData(_ms561101ba03Data_2);
 
     return result;
 }
@@ -88,7 +88,7 @@ bool Nemesis::updateGPS() {
     bool result = _gps->updateData();
 
     _gpsData = _gps->getData();
-    _rocketLogger->logSensorData(_gpsData);
+    _logger->logSensorData(_gpsData);
 
     return result;
 }

@@ -11,7 +11,7 @@
 
 using TransmitDataType = std::variant<char*, String, std::string, nlohmann::json>;
 
-ILogger *rocketLogger;
+ILogger *logger;
 SD *sdModule;
 
 ISensor *bno055;
@@ -33,12 +33,12 @@ void setup()
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
     pinMode(LED_BUILTIN, OUTPUT);
-    rocketLogger = new RocketLogger();
-    rocketLogger->logInfo("Setup started.");
+    logger = new RocketLogger();
+    logger->logInfo("Setup started.");
 
     sdModule = new SD();
 
-    sdModule->init() ? rocketLogger->logInfo("SD card initialized.") : rocketLogger->logError("Failed to initialize SD card.");
+    sdModule->init() ? logger->logInfo("SD card initialized.") : logger->logError("Failed to initialize SD card.");
 
     loraSerial.begin(SERIAL_BAUD_RATE, SERIAL_8N1, LORA_RX_PIN, LORA_TX_PIN);
     Serial.begin(SERIAL_BAUD_RATE);
@@ -59,9 +59,9 @@ void setup()
     loraTransmitter = new E220LoRaTransmitter(loraSerial, LORA_AUX, LORA_M0, LORA_M1);
     auto transmitterStatus = loraTransmitter->init();
     logTransmitterStatus(transmitterStatus);
-    rocketLogger->logInfo("Setup complete.");
-    logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
-    auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
+    logger->logInfo("Setup complete.");
+    logToSDCard(log_file, logger->getJSONAll().dump(4) + "\n");
+    auto response = loraTransmitter->transmit(logger->getJSONAll());
     logTransmissionResponse(response);
 }
 
@@ -72,27 +72,27 @@ void loop()
         auto bno055_data = bno055->getData();
         if (bno055_data.has_value())
         {
-            rocketLogger->logSensorData(bno055_data.value());
+            logger->logSensorData(bno055_data.value());
         }
 
         tcaSelect(I2C_MULTIPLEXER_MPRLS1);
         auto mprls1_data = mprls1->getData();
         if (mprls1_data.has_value())
         {
-            rocketLogger->logSensorData(mprls1_data.value());
+            logger->logSensorData(mprls1_data.value());
         }
 
         tcaSelect(I2C_MULTIPLEXER_MPRLS2);
         auto mprls2_data = mprls2->getData();
         if (mprls2_data.has_value())
         {
-            rocketLogger->logSensorData(mprls2_data.value());
+            logger->logSensorData(mprls2_data.value());
         }
     }
-    logToSDCard(log_file, rocketLogger->getJSONAll().dump(4) + "\n");
-    auto response = loraTransmitter->transmit(rocketLogger->getJSONAll());
+    logToSDCard(log_file, logger->getJSONAll().dump(4) + "\n");
+    auto response = loraTransmitter->transmit(logger->getJSONAll());
     logTransmissionResponse(response);
-    rocketLogger->clearData();
+    logger->clearData();
 }
 
 // Log transmitter initialization status
@@ -100,19 +100,19 @@ void logTransmitterStatus(ResponseStatusContainer &transmitterStatus)
 {
     if (transmitterStatus.getCode() == RESPONSE_STATUS::E220_SUCCESS)
     {
-        rocketLogger->logInfo(
+        logger->logInfo(
             ("LoRa transmitter initialized with configuration: " +
              static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(*(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)))
                 .c_str());
     }
     else
     {
-        rocketLogger->logError(
+        logger->logError(
             ("Failed to initialize LoRa transmitter with error: " +
              transmitterStatus.getDescription() +
              " (" + String(transmitterStatus.getCode()) + ")")
                 .c_str());
-        rocketLogger->logInfo(("Current configuration: " +
+        logger->logInfo(("Current configuration: " +
                                static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfigurationString(*(Configuration *)(static_cast<E220LoRaTransmitter *>(loraTransmitter)->getConfiguration().data)))
                                   .c_str());
     }
@@ -120,11 +120,11 @@ void logTransmitterStatus(ResponseStatusContainer &transmitterStatus)
     auto bno055Value = bno055->getData();
     if (bno055Value.has_value())
     {
-        rocketLogger->logSensorData(bno055Value.value());
+        logger->logSensorData(bno055Value.value());
     }
 
-    Serial.write(rocketLogger->getJSONAll().dump(4).c_str());
-    rocketLogger->clearData();
+    Serial.write(logger->getJSONAll().dump(4).c_str());
+    logger->clearData();
     delay(1000);
 }
 */

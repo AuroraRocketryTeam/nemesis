@@ -9,19 +9,30 @@
 #include <SD-master.hpp>
 #include <Logger.hpp>
 
+/**
+ * @brief Class to implement an SD logging task.
+ * 
+ */
 class SDLoggingTask : public BaseTask {
 public:
-    SDLoggingTask(std::shared_ptr<RocketLogger> rocketLogger = nullptr, 
-               SemaphoreHandle_t loggerMutex = nullptr,
-               std::shared_ptr<SD> sdCard = nullptr);
+    /**
+     * @brief Construct a new SDLoggingTask object
+     * 
+     * @param logger The shared pointer to the RocketLogger instance
+     * @param loggerMutex The semaphore handle to protect access to the logger
+     * @param sdCard The shared pointer to the SD card instance
+     */
+    SDLoggingTask(std::shared_ptr<RocketLogger> logger, 
+               SemaphoreHandle_t loggerMutex,
+               std::shared_ptr<SD> sdCard);
     
-        ~SDLoggingTask() override;
+    ~SDLoggingTask() override;
 
 protected:
     void taskFunction() override;
 
 private:
-    std::shared_ptr<RocketLogger> rocketLogger;
+    std::shared_ptr<RocketLogger> logger;
     SemaphoreHandle_t loggerMutex;
 
     std::shared_ptr<SD> sdCard;

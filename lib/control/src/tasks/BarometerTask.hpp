@@ -12,46 +12,27 @@
 // If not commented, the Baro1 is used, otherwise Baro2
 #define BARO_1
 
-// Simple moving average filter for noise reduction
-class MovingAverageFilter {
-public:
-    MovingAverageFilter(size_t windowSize = 10) : windowSize(windowSize) {
-        buffer.reserve(windowSize);
-    }
-    
-    float update(float newValue) {
-        buffer.push_back(newValue);
-        if (buffer.size() > windowSize) {
-            buffer.erase(buffer.begin());
-        }
-        
-        float sum = 0.0f;
-        for (float val : buffer) {
-            sum += val;
-        }
-        return sum / buffer.size();
-    }
-    
-    void reset() {
-        buffer.clear();
-    }
-    
-    bool isReady() const {
-        return buffer.size() >= windowSize;
-    }
-    
-private:
-    size_t windowSize;
-    std::vector<float> buffer;
-};
-
-// Median filter for spike rejection (better for outliers than moving average)
+/**
+ * @brief Class to implement a median filter.
+ * 
+ */
 class MedianFilter {
 public:
+    /**
+     * @brief Construct a new Median Filter object
+     * 
+     * @param windowSize The size of the median filter window
+     */
     MedianFilter(size_t windowSize) : windowSize(windowSize) {
         buffer.reserve(windowSize);
     }
-    
+
+    /**
+     * @brief Update the filter with a new value and get the filtered result
+     * 
+     * @param newValue The new value to add to the filter vector
+     * @return float The filtered result
+     */
     float update(float newValue) {
         buffer.push_back(newValue);
         if (buffer.size() > windowSize) {
@@ -70,10 +51,20 @@ public:
         }
     }
     
+    /**
+     * @brief Reset the filter buffer
+     * 
+     */
     void reset() {
         buffer.clear();
     }
     
+    /**
+     * @brief Check if the filter is ready (i.e., has enough data)
+     * 
+     * @return true if the filter is ready
+     * @return false if the filter is not ready
+     */
     bool isReady() const {
         return buffer.size() >= windowSize;
     }
@@ -84,9 +75,19 @@ private:
 };
 
 // The whole point of this class is not to deal directly with barometers, refactory needed!!!
+/**
+ * @brief Class to implement a barometer task.
+ * 
+ */
 class BarometerTask : public BaseTask
 {
 public:
+    /**
+     * @brief Construct a new Barometer Task object 
+     * 
+     * @param model The shared pointer to the rocket model
+     * @param modelMutex The mutex to protect access to the model
+     */
     BarometerTask(std::shared_ptr<Nemesis> model,
                     SemaphoreHandle_t modelMutex)
         : BaseTask("BarometerTask"),

@@ -5,8 +5,6 @@
 #include <SensorData.hpp>
 #include <ILoggable.hpp>
 
-using json = nlohmann::json;
-
 /**
  * @brief Class to store log data.
  * 

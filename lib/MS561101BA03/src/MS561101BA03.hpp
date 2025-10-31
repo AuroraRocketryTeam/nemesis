@@ -17,6 +17,10 @@
 #define MS5611_CMD_ADC_READ     0x00
 #define MS5611_CMD_PROM_READ    0xA0
 
+/**
+ * @brief Data structure for MS561101BA03 sensor readings
+ * 
+ */
 class MS561101BA03Data : public SensorData
 {
 public:
@@ -46,6 +50,10 @@ public:
     }
 };
 
+/**
+ * @brief MS561101BA03 sensor class
+ * 
+ */
 class MS561101BA03 : public ISensor
 {
 public:
@@ -53,9 +61,15 @@ public:
     bool init() override;
     bool updateData() override;
 
+    /**
+     * @brief Getter for the sensor data
+     * 
+     * @return a shared pointer to the MS561101BA03Data structure containing the latest readings
+     */
     std::shared_ptr<MS561101BA03Data> getData();
 
 private:
+    // I2C address of the sensor
     uint8_t _address;
     uint16_t _calibrationData[8];
     

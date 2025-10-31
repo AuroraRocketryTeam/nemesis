@@ -28,6 +28,10 @@ struct LEDPattern
     uint8_t auxLeds;   // Bitmask for additional LEDs
 };
 
+/**
+ * @brief Class to control RGB and status LEDs with various patterns.
+ * 
+ */
 class LEDController
 {
 private:

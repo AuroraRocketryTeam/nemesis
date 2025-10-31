@@ -3,6 +3,10 @@
 #include <SensorData.hpp>
 #include <freertos/FreeRTOS.h>
 
+/**
+ * @brief Structure to hold shared sensor data between tasks.
+ * 
+ */
 struct SharedSensorData
 {
     class SensorData imuData;
@@ -15,6 +19,10 @@ struct SharedSensorData
     SharedSensorData() : imuData("bno055"), baroData1("baro1"), baroData2("baro2"), gpsData("gps"), timestamp(0), dataValid(false) {}
 };
 
+/**
+ * @brief Structure to hold filtered sensor data between tasks.
+ * 
+ */
 struct SharedFilteredData
 {
     float altitude;

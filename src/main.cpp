@@ -66,7 +66,7 @@ using TransmitDataType = std::variant<char *, String, std::string, nlohmann::jso
 std::shared_ptr<SD> sdCard = nullptr;
 
 // Define the RocketLogger
-std::shared_ptr<RocketLogger> rocketLogger = nullptr;
+std::shared_ptr<RocketLogger> logger = nullptr;
 
 // FSM instance
 std::unique_ptr<RocketFSM> rocketFSM;
@@ -144,11 +144,11 @@ void setup()
 
     // Initialize logger
     LOG_INFO("Init", "Initializing rocket logger...");
-    rocketLogger = std::make_shared<RocketLogger>();
+    logger = std::make_shared<RocketLogger>();
     LOG_INFO("Init", "Rocket logger initialized");
 
-    // Create Nemesis instance (constructor expects: rocketLogger, bno, lis3dh, ms56_1, ms56_2, gps)
-    nemesis = std::make_shared<Nemesis>(rocketLogger, bno055, accl, baro1, baro2, gps);
+    // Create Nemesis instance (constructor expects: logger, bno, lis3dh, ms56_1, ms56_2, gps)
+    nemesis = std::make_shared<Nemesis>(logger, bno055, accl, baro1, baro2, gps);
     LOG_INFO("Main", "Nemesis system model created");
 
 #ifdef ENABLE_TEST_ROUTINE
@@ -170,7 +170,7 @@ void setup()
     // Initialize and start FSM
     LOG_INFO("Main", "=== System initialization complete ===");
     LOG_INFO("Main", "\n=== Initializing Flight State Machine ===");
-    rocketFSM = std::make_unique<RocketFSM>(nemesis, sdCard, rocketLogger);
+    rocketFSM = std::make_unique<RocketFSM>(nemesis, sdCard, logger);
     rocketFSM->init();
     delay(1000);
 
@@ -213,9 +213,9 @@ void loop()
         digitalWrite(LED_BUILTIN, ledState);
 
         // Monitor RocketLogger memory usage
-        if (rocketLogger)
+        if (logger)
         {
-            int logCount = rocketLogger->getLogCount();
+            int logCount = logger->getLogCount();
             LOG_INFO("Main", "RocketLogger entries: %d", logCount);
 
             // If log count is high, warn about memory usage
