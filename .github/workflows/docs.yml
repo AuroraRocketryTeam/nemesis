@@ -1,0 +1,152 @@
+name: Generate and Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Doxygen and LaTeX
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+        sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra
+        
+    - name: Generate HTML documentation
+      run: |
+        doxygen Doxyfile
+        
+    - name: Generate PDF documentation
+      run: |
+        cd docs/latex
+        make
+        cd ../..
+        # Copy PDF to HTML output directory for easy access
+        cp docs/latex/refman.pdf docs/html/
+        
+    - name: Create index page with links
+      run: |
+        cat > docs/html/documentation.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Nemesis Flight Computer - Documentation</title>
+            <meta charset="UTF-8">
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 800px;
+                    margin: 50px auto;
+                    padding: 20px;
+                    background-color: #f5f5f5;
+                }
+                .container {
+                    background-color: white;
+                    padding: 40px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                h1 {
+                    color: #2c3e50;
+                    border-bottom: 3px solid #3498db;
+                    padding-bottom: 10px;
+                }
+                .doc-links {
+                    margin-top: 30px;
+                }
+                .doc-link {
+                    display: block;
+                    padding: 20px;
+                    margin: 15px 0;
+                    background-color: #3498db;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    transition: background-color 0.3s;
+                }
+                .doc-link:hover {
+                    background-color: #2980b9;
+                }
+                .doc-link h2 {
+                    margin: 0 0 10px 0;
+                    font-size: 24px;
+                }
+                .doc-link p {
+                    margin: 0;
+                    opacity: 0.9;
+                }
+                .footer {
+                    margin-top: 40px;
+                    text-align: center;
+                    color: #7f8c8d;
+                    font-size: 14px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🚀 Nemesis Flight Computer Documentation</h1>
+                <p>Welcome to the Aurora Rocket Team's flight computer documentation portal.</p>
+                
+                <div class="doc-links">
+                    <a href="index.html" class="doc-link">
+                        <h2>📚 HTML Documentation</h2>
+                        <p>Browse the complete API reference, class hierarchy, and code documentation online</p>
+                    </a>
+                    
+                    <a href="refman.pdf" class="doc-link">
+                        <h2>📄 PDF Manual</h2>
+                        <p>Download the full reference manual in PDF format for offline reading</p>
+                    </a>
+                </div>
+                
+                <div class="footer">
+                    <p>Generated automatically by Doxygen | Aurora Rocket Team</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'docs/html'
+        
+  deploy:
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
