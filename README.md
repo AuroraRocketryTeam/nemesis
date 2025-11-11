@@ -414,6 +414,6 @@ For questions or collaboration opportunities, reach out via GitHub issues or the
 
 <div align="center">
 
-[Back to Top](#-nemesis-flight-computer)
+[Back to Top](#nemesis-flight-computer)
 
 </div>
